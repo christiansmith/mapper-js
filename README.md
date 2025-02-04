@@ -15,7 +15,7 @@ deno add jsr:@christiansmith/mapper-js
 ### NPM
 
 ```bash
-npm install mapper-js
+npm install @christiansmith/mapper-js
 ```
 
 ## License

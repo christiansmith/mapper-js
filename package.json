@@ -1,5 +1,5 @@
 {
-  "name": "mapper-js",
+  "name": "@christiansmith/mapper-js",
   "version": "0.1.0",
   "type": "module",
   "description": "Declarative transformation",
