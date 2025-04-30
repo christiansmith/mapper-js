@@ -4,14 +4,28 @@
 /**
  * Dependencies
  */
-import path from 'node:path'
 import JSONPointer from './JSONPointer.js'
 
 /**
  * resolve
  */
 function resolve(...paths) {
-  return path.join(...paths)
+  const normalized = paths.map((path) => path.replace(/\\/g, '/'))
+  const joined = normalized.join('/')
+  const absolute = joined.startsWith('/')
+  const segments = joined.split('/').filter((segment) => segment !== '' && segment !== '.')
+  const resolved = []
+
+  for (const segment of segments) {
+    if (segment === '..') {
+      resolved.pop()
+    } else {
+      resolved.push(segment)
+    }
+  }
+
+  const result = (absolute ? '/' : '') + resolved.join('/')
+  return result || '.'
 }
 
 /**
