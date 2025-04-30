@@ -1,6 +1,6 @@
 {
   "name": "@christiansmith/mapper-js",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Declarative transformation",
   "main": "src/index.js",
