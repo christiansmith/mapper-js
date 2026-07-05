@@ -440,10 +440,10 @@ function transformValue(descriptor, value, context) {
 
     for (let desc of descriptors) {
       if (typeof desc === 'string') {
-        const fn = transformers[descriptor.transform]
+        const fn = transformers[desc]
 
         if (fn) {
-          value = fn(result, context)
+          result = fn(result, context)
         }
       } else if (typeof desc === 'object') {
         for (let key of Object.keys(desc)) {
