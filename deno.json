@@ -2,5 +2,15 @@
   "name": "@christiansmith/mapper-js",
   "version": "0.1.1",
   "license": "MIT",
-  "exports": "./src/index.js"
+  "exports": "./src/index.js",
+  "tasks": {
+    "test": "deno test --allow-read test/"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.0",
+    "@std/yaml": "jsr:@std/yaml@^1.0.0"
+  },
+  "publish": {
+    "exclude": ["test/"]
+  }
 }

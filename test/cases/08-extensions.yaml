@@ -1,0 +1,134 @@
+# Extension interfaces: initializers, transformers, plugins, and template.
+# Extension functions are the deterministic set in test/extensions.js.
+suite: extensions
+tests:
+  - description: an initializer supplies a value
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /id: { init: uuid }
+        /created: { init: date-time }
+    input: {}
+    expected:
+      result:
+        id: 'urn:uuid:00000000-0000-4000-8000-000000000000'
+        created: '2026-01-01T00:00:00.000Z'
+      errors: []
+
+  - description: an initializer receives the read value
+    tier: core
+    level: get
+    descriptor: { source: /name, init: counterfactual }
+    input: { name: Ada }
+    expected: { value: Ada, errors: [] }
+
+  - description: an initializer can fill an absent value
+    tier: core
+    level: get
+    descriptor: { source: /missing, init: counterfactual }
+    input: { name: Ada }
+    expected: { value: initialized, errors: [] }
+
+  - description: a string transform applies a named transformer
+    tier: core
+    level: get
+    descriptor: { source: /s, transform: trim }
+    input: { s: '  padded  ' }
+    expected: { value: padded, errors: [] }
+
+  - description: transform steps apply in order
+    tier: core
+    level: get
+    descriptor:
+      source: /csv
+      transform:
+        - { split: ', ' }
+        - { slice: [1, 3] }
+        - last
+        - upcase
+    input: { csv: 'a, b, c, d' }
+    expected: { value: 'C', errors: [] }
+
+  - description: an object transform step passes itself as options
+    tier: core
+    level: get
+    descriptor:
+      source: /obj
+      transform:
+        - { pluck: /x }
+    input:
+      obj: { x: 9 }
+    expected: { value: 9, errors: [] }
+
+  - description: unknown transformer names are skipped
+    tier: core
+    level: get
+    descriptor: { source: /s, transform: no-such-transformer }
+    input: { s: kept }
+    expected: { value: kept, errors: [] }
+
+  - description: a plugin keyword replaces the value
+    tier: core
+    level: get
+    descriptor:
+      source: /v
+      wrap: { key: data }
+    input: { v: 7 }
+    expected:
+      value: { data: 7 }
+      errors: []
+
+  - description: a plugin result can be narrowed with pointer
+    tier: core
+    level: get
+    descriptor:
+      source: /v
+      wrap: { key: data, pointer: /data }
+    input: { v: 7 }
+    expected: { value: 7, errors: [] }
+
+  - description: async plugins resolve within each fan-out
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /out:
+          source: /items
+          each:
+            /v: { source: /n, delayed: { ms: 1 } }
+    input:
+      items: [{ n: 1 }, { n: 2 }]
+    expected:
+      result:
+        out: [{ v: 1 }, { v: 2 }]
+      errors: []
+
+  - description: template renders mapped values into placeholders
+    tier: core
+    level: get
+    descriptor:
+      source: /person
+      template: 'Hello {{name}}, welcome to {{place}}!'
+      mapping:
+        /name: /first
+        /place: /city
+    input:
+      person: { first: Ada, city: London }
+    expected:
+      value: 'Hello Ada, welcome to London!'
+      errors: []
+
+  - description: template placeholders with no mapped value render empty
+    tier: core
+    level: get
+    descriptor:
+      source: /person
+      template: 'Hello {{name}}{{nothing}}!'
+      mapping:
+        /name: /first
+    input:
+      person: { first: Ada }
+    expected:
+      value: 'Hello Ada!'
+      errors: []

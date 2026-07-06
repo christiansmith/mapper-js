@@ -1,0 +1,87 @@
+# first / last / all combinators and descriptor-variant arrays.
+suite: combinators
+level: get
+tests:
+  - description: first defined value wins
+    tier: core
+    descriptor:
+      first: ['/bar', '/baz', '/quux']
+    input: { baz: 4, quux: 5 }
+    expected: { value: 4, errors: [] }
+
+  - description: first with mixed descriptor forms
+    tier: core
+    descriptor:
+      first: ['/bar', { source: /baz }, '/quux']
+    input: { baz: 4, quux: 5 }
+    expected: { value: 4, errors: [] }
+
+  - description: first with no defined value is undefined
+    tier: core
+    descriptor:
+      first: ['/bar', '/baz']
+    input: { other: value }
+    expected: { value: __undefined__, errors: [] }
+
+  - description: last defined value wins
+    tier: core
+    descriptor:
+      last: ['/a', '/a/b']
+    input: { a: { b: 2 } }
+    expected: { value: 2, errors: [] }
+
+  - description: all collects every defined value
+    tier: core
+    descriptor:
+      all: ['/a', '/a/b']
+    input: { a: { b: 2 } }
+    expected:
+      value: [{ b: 2 }, 2]
+      errors: []
+
+  - description: all with concat flattens one level
+    tier: core
+    descriptor:
+      all: ['/a', '/b']
+      concat: true
+    input:
+      a: [1, 2, 3]
+      b: [4, 5, 6]
+    expected:
+      value: [1, 2, 3, 4, 5, 6]
+      errors: []
+
+  - description: find selects an array item by equality and narrows by pointer
+    tier: core
+    descriptor:
+      source: /ids
+      find:
+        eq: { idType: doi }
+        pointer: /value
+    input:
+      ids:
+        - { idType: issn, value: '1234-5678' }
+        - { idType: doi, value: '10.1000/xyz' }
+    expected: { value: '10.1000/xyz', errors: [] }
+
+  - description: find wraps a single object as a one-item list
+    tier: core
+    descriptor:
+      source: /id
+      find:
+        eq: { idType: doi }
+        pointer: /value
+    input:
+      id: { idType: doi, value: '10.1000/xyz' }
+    expected: { value: '10.1000/xyz', errors: [] }
+
+  - description: variant array on a pairing takes the first defined result
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /foo: ['/bar', { source: /baz }, '/quux']
+    input: { baz: 4 }
+    expected:
+      result: { foo: 4 }
+      errors: []

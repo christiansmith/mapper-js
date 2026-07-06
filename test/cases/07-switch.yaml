@@ -1,0 +1,115 @@
+# The switch keyword: dispatch on a value read from the switched value.
+suite: switch
+level: map
+tests:
+  - description: switch selects a case by pointer
+    tier: core
+    descriptor:
+      source: /
+      mapping:
+        /switched:
+          source: /
+          switch:
+            source: /case
+            cases:
+              x: /x
+              y: /y
+              z: /z
+    input: { case: y, x: 24, y: 25, z: 26 }
+    expected:
+      result: { switched: 25 }
+      errors: []
+
+  - description: switch selects a nested mapping
+    tier: core
+    descriptor:
+      mapping:
+        /switched:
+          switch:
+            source: /case
+            cases:
+              x: { source: /, mapping: { /x: /x/x } }
+              y: { source: /, mapping: { /y: /y/y } }
+              z: { source: /, mapping: { /z: /z/z } }
+    input:
+      case: y
+      x: { x: 24 }
+      y: { y: 25 }
+      z: { z: 26 }
+    expected:
+      result:
+        switched: { y: 25 }
+      errors: []
+
+  - description: switch selects a $ref case
+    tier: core
+    descriptor:
+      source: /
+      mapping:
+        /switched:
+          source: /
+          switch:
+            source: /case
+            cases:
+              x: { $ref: 'mapping:x' }
+              y: { $ref: 'mapping:y' }
+    mappings:
+      'mapping:x': { $id: 'mapping:x', source: /, mapping: { /x: /x/x } }
+      'mapping:y': { $id: 'mapping:y', source: /, mapping: { /y: /y/y } }
+    input:
+      case: y
+      x: { x: 24 }
+      y: { y: 25 }
+    expected:
+      result:
+        switched: { y: 25 }
+      errors: []
+
+  - description: switch falls back to the default case
+    tier: core
+    descriptor:
+      source: /
+      mapping:
+        /switched:
+          source: /
+          switch:
+            source: /case
+            cases:
+              x: /x
+              default: /z
+    input: { case: y, x: 24, z: 26 }
+    expected:
+      result: { switched: 26 }
+      errors: []
+
+  - description: switch with no matching case and no default writes nothing
+    tier: core
+    descriptor:
+      source: /
+      mapping:
+        /switched:
+          source: /
+          switch:
+            source: /case
+            cases:
+              x: /x
+    input: { case: y, x: 24 }
+    expected:
+      result: {}
+      errors: []
+
+  - description: switch with an absent branch value leaves the value unswitched
+    tier: core
+    descriptor:
+      source: /
+      mapping:
+        /switched:
+          source: /x
+          switch:
+            source: /missing
+            cases:
+              x: /x
+    input: { x: 24 }
+    expected:
+      result: { switched: 24 }
+      errors: []

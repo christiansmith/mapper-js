@@ -1,0 +1,134 @@
+# The mapping construct: pairings, nesting, each, deep targets, envelope.
+suite: mapping core
+level: map
+tests:
+  - description: nested mapping builds an object
+    tier: core
+    descriptor:
+      source: /
+      mapping:
+        /a/b:
+          source: /c
+          mapping:
+            /d: /e
+            /f: /g
+    input:
+      c: { e: 3, g: 4 }
+    expected:
+      result:
+        a:
+          b: { d: 3, f: 4 }
+      errors: []
+
+  - description: each maps every element of an array
+    tier: core
+    descriptor:
+      mapping:
+        /a/b:
+          source: /c
+          each:
+            /d: /e
+            /f: /g
+    input:
+      c:
+        - { e: 1, g: 2 }
+        - { e: 3, g: 4 }
+    expected:
+      result:
+        a:
+          b:
+            - { d: 1, f: 2 }
+            - { d: 3, f: 4 }
+      errors: []
+
+  - description: deep target pointers create intermediate objects
+    tier: core
+    descriptor:
+      mapping:
+        /a: /a/a
+        /b/b: /b
+    input:
+      a: { a: 1 }
+      b: 2
+    expected:
+      result:
+        a: 1
+        b: { b: 2 }
+      errors: []
+
+  - description: language-map style key remapping under each
+    tier: core
+    descriptor:
+      source: /
+      mapping:
+        /items:
+          source: /collection
+          each:
+            /content: /content
+            /contentMap/en: /content@en
+            /contentMap/ar: /content@ar
+    input:
+      collection:
+        - { 'content@en': Excellent }
+        - { 'content@ar': Mumtaz }
+        - { content: Great }
+    expected:
+      result:
+        items:
+          - { contentMap: { en: Excellent } }
+          - { contentMap: { ar: Mumtaz } }
+          - { content: Great }
+      errors: []
+
+  - description: a failed pairing short-circuits map to null
+    tier: core
+    descriptor:
+      mapping:
+        /a: { source: /missing, required: true }
+        /b: /b
+    input: { b: 2 }
+    expected:
+      result: null
+      errors:
+        - { source: /missing, required: true, message: required value }
+
+  - description: mapper envelope reports valid and errors
+    tier: core
+    level: mapper
+    descriptor:
+      mapping:
+        /a: /a
+    input: { a: 1 }
+    expected:
+      result: { a: 1, valid: true, errors: [] }
+      valid: true
+      errors: []
+
+  - description: mapper envelope on validation failure
+    tier: core
+    level: mapper
+    descriptor:
+      mapping:
+        /a: { source: /missing, required: true }
+    input: { b: 2 }
+    expected:
+      valid: false
+      errors:
+        - { source: /missing, required: true, message: required value }
+
+  - description: mapper wraps a bare array input as items
+    tier: core
+    level: mapper
+    descriptor:
+      mapping:
+        /d: /e
+    input:
+      - { e: 1 }
+      - { e: 2 }
+    expected:
+      result:
+        items:
+          - { d: 1 }
+          - { d: 2 }
+        valid: true
+        errors: []

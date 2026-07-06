@@ -1,0 +1,233 @@
+# Characterization probes. Each case pins the CURRENT observed behavior of the
+# reference implementation, including behaviors identified as likely defects or
+# portability hazards. Cases marked with a `deviation` key are candidates for
+# the specification's "Known Deviations of the Reference Implementation"
+# appendix: the spec may define different intended behavior, but this file must
+# always reflect what the implementation actually does.
+suite: probes
+tests:
+  - description: 'F1: pairings evaluate in document order — later pairings read earlier output'
+    tier: core
+    deviation: F1-key-order
+    level: map
+    descriptor:
+      mapping:
+        /a: { constant: 1 }
+        /b: { output: /a }
+    input: {}
+    expected:
+      result: { a: 1, b: 1 }
+      errors: []
+
+  - description: 'F1: reversed pairing order reads undefined — order is semantics'
+    tier: core
+    deviation: F1-key-order
+    level: map
+    descriptor:
+      mapping:
+        /b: { output: /a }
+        /a: { constant: 1 }
+    input: {}
+    expected:
+      result: { a: 1 }
+      errors: []
+
+  - description: 'F1: plugin keywords chain in descriptor key order (wrap then echo)'
+    tier: core
+    deviation: F1-key-order
+    level: get
+    descriptor:
+      source: /v
+      wrap: { key: inner }
+      echo: {}
+    input: { v: 1 }
+    expected:
+      value:
+        options: {}
+        value: { inner: 1 }
+      errors: []
+
+  - description: 'F1: plugin keywords chain in descriptor key order (echo then wrap)'
+    tier: core
+    deviation: F1-key-order
+    level: get
+    descriptor:
+      source: /v
+      echo: {}
+      wrap: { key: inner }
+    input: { v: 1 }
+    expected:
+      value:
+        inner:
+          options: {}
+          value: 1
+      errors: []
+
+  - description: 'F2: a boolean value under a nested mapping is silently dropped'
+    deviation: F2-boolean-null-loss
+    level: map
+    descriptor:
+      mapping:
+        /x:
+          source: /b
+          mapping: { /y: / }
+    input: { b: true }
+    expected:
+      result: {}
+      errors: []
+
+  - description: 'F2: a null value under a nested mapping is silently dropped'
+    deviation: F2-boolean-null-loss
+    level: map
+    descriptor:
+      mapping:
+        /x:
+          source: /b
+          mapping: { /y: / }
+    input: { b: null }
+    expected:
+      result: {}
+      errors: []
+
+  - description: 'F2: a boolean selected by switch is silently dropped'
+    deviation: F2-boolean-null-loss
+    level: map
+    descriptor:
+      mapping:
+        /x:
+          source: /
+          switch:
+            source: /kind
+            cases:
+              flag: /flag
+    input: { kind: flag, flag: true }
+    expected:
+      result: {}
+      errors: []
+
+  - description: 'F3: an empty array under a nested mapping becomes an empty object'
+    deviation: F3-empty-array
+    level: map
+    descriptor:
+      mapping:
+        /x:
+          source: /list
+          mapping: { /n: /name }
+    input: { list: [] }
+    expected:
+      result: { x: {} }
+      errors: []
+
+  - description: 'F4: target index token "0" creates an object, not an array'
+    deviation: F4-recover-container-inference
+    level: map
+    descriptor:
+      mapping:
+        /a/0/b: /v
+    input: { v: x }
+    expected:
+      result:
+        a:
+          '0': { b: x }
+      errors: []
+
+  - description: 'F4: target index token "1" creates an array and splice-inserts at index 0'
+    deviation: F4-recover-container-inference
+    level: map
+    descriptor:
+      mapping:
+        /a/1/b: /v
+    input: { v: x }
+    expected:
+      result:
+        a:
+          '1': [x]
+      errors: []
+
+  - description: 'F5: minLength on an absent value throws'
+    deviation: F5-validator-edge-cases
+    level: get
+    descriptor: { source: /missing, minLength: 2 }
+    input: {}
+    throws: length
+
+  - description: 'F5: as string on an absent value throws'
+    deviation: F5-validator-edge-cases
+    level: get
+    descriptor: { source: /missing, as: string }
+    input: {}
+    throws: toString
+
+  - description: 'F5: minimum 0 is never enforced (falsy guard)'
+    deviation: F5-validator-edge-cases
+    level: get
+    descriptor: { source: /n, minimum: 0 }
+    input: { n: -5 }
+    expected: { value: -5, errors: [] }
+
+  - description: 'F6: random selects a member of the array (nondeterministic)'
+    tier: experimental
+    deviation: F6-random-nondeterminism
+    level: get
+    descriptor: { source: /list, random: 1 }
+    input:
+      list: [a, b, c]
+    assert:
+      /: { oneOf: [a, b, c] }
+    expected: { errors: [] }
+
+  - description: 'F6: random with unique selects distinct members'
+    tier: experimental
+    deviation: F6-random-nondeterminism
+    level: get
+    descriptor: { source: /list, random: 2, unique: true }
+    input:
+      list: [a, b]
+    assert:
+      /: { type: array, length: 2, subsetOf: [a, b] }
+    expected: { errors: [] }
+
+  - description: 'F7: a non-pointer string descriptor evaluates to the whole source'
+    deviation: F7-deref-ambiguity
+    level: map
+    descriptor:
+      mapping:
+        /x: not-a-pointer
+    input: { a: 1 }
+    expected:
+      result:
+        x: { a: 1 }
+      errors: []
+
+  - description: 'F7: a slash-prefixed pointer containing .. reads literal tokens, unresolved'
+    deviation: F7-deref-ambiguity
+    level: get
+    descriptor: /b/../d/e
+    input:
+      b: { c: 3 }
+      d: { e: 5 }
+    expected: { value: __undefined__, errors: [] }
+
+  - description: 'F8: stdout true logs the target object'
+    tier: experimental
+    deviation: F8-stdout-side-effect
+    level: map
+    descriptor:
+      stdout: true
+      mapping: { /a: /a }
+    input: { a: 1 }
+    expected:
+      result: { a: 1 }
+      stdout: { contains: '{"a":1}' }
+
+  - description: 'F8: stdout with a pointer logs that part of the target as JSON'
+    tier: experimental
+    deviation: F8-stdout-side-effect
+    level: map
+    descriptor:
+      stdout: /a
+      mapping: { /a: /a }
+    input: { a: 1 }
+    expected:
+      result: { a: 1 }
+      stdout: { contains: '1' }

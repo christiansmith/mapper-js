@@ -1,0 +1,195 @@
+# JSON-Schema-like validation keywords. Errors accumulate; values pass through.
+suite: validation
+level: get
+tests:
+  - description: type array accepts an array
+    tier: core
+    descriptor: { source: /a, type: array }
+    input: { a: [1, 2] }
+    expected: { value: [1, 2], errors: [] }
+
+  - description: type array rejects an object
+    tier: core
+    descriptor: { source: /a, type: array }
+    input: { a: { b: 2 } }
+    expected:
+      value: { b: 2 }
+      errors:
+        - { source: /a, value: { b: 2 }, type: array, message: must be an array }
+
+  - description: type boolean rejects an object
+    tier: core
+    descriptor: { source: /a, type: boolean }
+    input: { a: { b: 2 } }
+    expected:
+      value: { b: 2 }
+      errors:
+        - { source: /a, value: { b: 2 }, type: boolean, message: must be true or false }
+
+  - description: type integer rejects an object
+    tier: core
+    descriptor: { source: /a, type: integer }
+    input: { a: { b: 2 } }
+    expected:
+      value: { b: 2 }
+      errors:
+        - { source: /a, value: { b: 2 }, type: integer, message: must be an integer }
+
+  - description: type null rejects an object
+    tier: core
+    descriptor: { source: /a, type: 'null' }
+    input: { a: { b: 2 } }
+    expected:
+      value: { b: 2 }
+      errors:
+        - { source: /a, value: { b: 2 }, type: 'null', message: must be null }
+
+  - description: type number rejects an object
+    tier: core
+    descriptor: { source: /a, type: number }
+    input: { a: { b: 2 } }
+    expected:
+      value: { b: 2 }
+      errors:
+        - { source: /a, value: { b: 2 }, type: number, message: must be a number }
+
+  - description: type object rejects a boolean
+    tier: core
+    descriptor: { source: /a, type: object }
+    input: { a: true }
+    expected:
+      value: true
+      errors:
+        - { source: /a, value: true, type: object, message: must be an object }
+
+  - description: type string rejects an object
+    tier: core
+    descriptor: { source: /a, type: string }
+    input: { a: { b: 2 } }
+    expected:
+      value: { b: 2 }
+      errors:
+        - { source: /a, value: { b: 2 }, type: string, message: must be a string }
+
+  - description: absent values are not type-checked
+    tier: core
+    descriptor: { source: /missing, type: string }
+    input: { a: 1 }
+    expected: { value: __undefined__, errors: [] }
+
+  - description: minimum rejects a smaller number
+    tier: core
+    descriptor: { source: /a, minimum: 2 }
+    input: { a: 1 }
+    expected:
+      value: 1
+      errors:
+        - { source: /a, value: 1, minimum: 2, message: cannot be less than 2 }
+
+  - description: minimum accepts an equal number
+    tier: core
+    descriptor: { source: /a, minimum: 2 }
+    input: { a: 2 }
+    expected: { value: 2, errors: [] }
+
+  - description: maximum rejects a larger number
+    tier: core
+    descriptor: { source: /a, maximum: 2 }
+    input: { a: 3 }
+    expected:
+      value: 3
+      errors:
+        - { source: /a, value: 3, maximum: 2, message: cannot be greater than 2 }
+
+  - description: multipleOf rejects a non-multiple
+    tier: core
+    descriptor: { source: /a, multipleOf: 2 }
+    input: { a: 3 }
+    expected:
+      value: 3
+      errors:
+        - { source: /a, value: 3, multipleOf: 2, message: must be a multiple of 2 }
+
+  - description: multipleOf accepts a multiple
+    tier: core
+    descriptor: { source: /a, multipleOf: 5 }
+    input: { a: 15 }
+    expected: { value: 15, errors: [] }
+
+  - description: minLength rejects a shorter string
+    tier: core
+    descriptor: { source: /a, minLength: 2 }
+    input: { a: a }
+    expected:
+      value: a
+      errors:
+        - { source: /a, value: a, minLength: 2, message: cannot be less than 2 characters }
+
+  - description: maxLength rejects a longer string
+    tier: core
+    descriptor: { source: /a, maxLength: 2 }
+    input: { a: aaa }
+    expected:
+      value: aaa
+      errors:
+        - { source: /a, value: aaa, maxLength: 2, message: cannot be more than 2 characters }
+
+  - description: enum rejects a value not in the list
+    tier: core
+    descriptor:
+      source: /a
+      enum: [b, c, d]
+    input: { a: a }
+    expected:
+      value: a
+      errors:
+        - source: /a
+          value: a
+          enum: [b, c, d]
+          message: must be one of ["b","c","d"]
+
+  - description: enum accepts a listed value
+    tier: core
+    descriptor:
+      source: /a
+      enum: [alpha, 17, false]
+    input: { a: alpha }
+    expected: { value: alpha, errors: [] }
+
+  - description: enum does not check absent values
+    tier: core
+    descriptor:
+      source: /missing
+      enum: [alpha, 17, false]
+    input: { a: 1 }
+    expected: { value: __undefined__, errors: [] }
+
+  - description: pattern rejects a non-matching string
+    tier: core
+    descriptor: { source: /a, pattern: '^[a-z]+$' }
+    input: { a: '123' }
+    expected:
+      value: '123'
+      errors:
+        - { source: /a, value: '123', pattern: '^[a-z]+$', message: must match pattern }
+
+  - description: pattern accepts a matching string
+    tier: core
+    descriptor: { source: /a, pattern: '^foo' }
+    input: { a: foobar }
+    expected: { value: foobar, errors: [] }
+
+  - description: required rejects an absent value
+    tier: core
+    descriptor: { source: /a, required: true }
+    input: { b: 86 }
+    expected:
+      value: __undefined__
+      errors:
+        - { source: /a, required: true, message: required value }
+
+  - description: required false accepts an absent value
+    tier: core
+    descriptor: { source: /a, required: false }
+    input: { b: 86 }
+    expected: { value: __undefined__, errors: [] }

@@ -1,0 +1,57 @@
+# Value initialization and finalization: constant, default, as, regexp_i.
+suite: finalize
+level: get
+tests:
+  - description: default applies when the value is undefined
+    tier: core
+    descriptor: { source: /b, default: 3 }
+    input: { a: 1 }
+    expected: { value: 3, errors: [] }
+
+  - description: a present value overrides the default
+    tier: core
+    descriptor: { source: /b, default: 3 }
+    input: { b: 1 }
+    expected: { value: 1, errors: [] }
+
+  - description: constant replaces any read value
+    tier: core
+    descriptor: { source: /a, constant: 'TIME' }
+    input: { a: 1 }
+    expected: { value: 'TIME', errors: [] }
+
+  - description: constant with no source
+    tier: core
+    descriptor: { constant: 'TIME' }
+    input: { a: 1 }
+    expected: { value: 'TIME', errors: [] }
+
+  - description: as string coerces a number
+    tier: core
+    descriptor: { source: /a, as: string }
+    input: { a: 1 }
+    expected: { value: '1', errors: [] }
+
+  - description: as number coerces a numeric string
+    tier: core
+    descriptor: { source: /a, as: number }
+    input: { a: '1' }
+    expected: { value: 1, errors: [] }
+
+  - description: as boolean coerces a falsy value
+    tier: core
+    descriptor: { source: /a, as: boolean }
+    input: { a: 0 }
+    expected: { value: false, errors: [] }
+
+  - description: as json serializes an object
+    tier: core
+    descriptor: { source: /a, as: json }
+    input: { a: { b: c } }
+    expected: { value: '{"b":"c"}', errors: [] }
+
+  - description: regexp_i wraps the value as a case-insensitive regexp literal
+    tier: experimental
+    descriptor: { source: /a, regexp_i: true }
+    input: { a: abc }
+    expected: { value: '/abc/i', errors: [] }

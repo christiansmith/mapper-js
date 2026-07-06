@@ -1,0 +1,171 @@
+# Registry references: $ref, $extend, and named-mapping resolution.
+suite: references
+tests:
+  - description: $ref resolves a registered mapping
+    tier: core
+    level: map
+    descriptor:
+      $ref: 'mapping:Referenced'
+    mappings:
+      'mapping:Referenced':
+        $id: 'mapping:Referenced'
+        source: /
+        mapping:
+          /a: /a/a
+          /b/b: /b
+    input:
+      a: { a: 1 }
+      b: 2
+    expected:
+      result: { a: 1, b: { b: 2 } }
+      errors: []
+
+  - description: mapping-valued $ref resolves a registered mapping
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        $ref: 'mapping:Referenced'
+    mappings:
+      'mapping:Referenced':
+        $id: 'mapping:Referenced'
+        mapping:
+          /a: /a/a
+          /b/b: /b
+    input:
+      a: { a: 1 }
+      b: 2
+    expected:
+      result: { a: 1, b: { b: 2 } }
+      errors: []
+
+  - description: each with a $ref mapping
+    tier: core
+    level: map
+    descriptor:
+      source: /
+      mapping:
+        /makes:
+          source: /data/array
+          each:
+            $ref: 'mapping:Anaphora'
+    mappings:
+      'mapping:Anaphora':
+        $id: 'mapping:Anaphora'
+        source: /
+        mapping:
+          /thing/c: /happen
+          /thing/d: /to
+    input:
+      data:
+        array:
+          - { happen: oh, to: you }
+          - { happen: no, to: them }
+    expected:
+      result:
+        makes:
+          - { thing: { c: oh, d: you } }
+          - { thing: { c: no, d: them } }
+      errors: []
+
+  - description: nested mapping by $ref
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /a/b:
+          source: /c
+          mapping: { $ref: 'mapping:C' }
+    mappings:
+      'mapping:C':
+        $id: 'mapping:C'
+        mapping:
+          /d: /e
+          /f: /g
+    input:
+      c: { e: 3, g: 7 }
+    expected:
+      result:
+        a:
+          b: { d: 3, f: 7 }
+      errors: []
+
+  - description: extend merges parent pairings ahead of the child's
+    tier: core
+    level: extend
+    descriptor:
+      $id: 'mapping:Extender'
+      $extend: 'mapping:Parent'
+      mapping:
+        /c: /c
+    mappings:
+      'mapping:Parent':
+        $id: 'mapping:Parent'
+        mapping:
+          /a: /a
+          /b: /b
+    expected:
+      result:
+        $id: 'mapping:Extender'
+        $extend: 'mapping:Parent'
+        mapping:
+          /a: /a
+          /b: /b
+          /c: /c
+
+  - description: extend resolves transitively through ancestors
+    tier: core
+    level: extend
+    descriptor:
+      $id: 'mapping:Extender'
+      $extend: 'mapping:Parent'
+      mapping:
+        /e: /e
+    mappings:
+      'mapping:Grandparent':
+        $id: 'mapping:Grandparent'
+        mapping:
+          /a: /a
+          /b: /b
+      'mapping:Parent':
+        $id: 'mapping:Parent'
+        $extend: 'mapping:Grandparent'
+        mapping:
+          /c: /c
+          /d: /d
+    expected:
+      result:
+        $id: 'mapping:Extender'
+        $extend: 'mapping:Parent'
+        mapping:
+          /a: /a
+          /b: /b
+          /c: /c
+          /d: /d
+          /e: /e
+
+  - description: mapper resolves a registered id and applies inheritance
+    tier: core
+    level: mapper
+    id: 'mapping:C'
+    mappings:
+      'mapping:A':
+        $id: 'mapping:A'
+        $extend: 'mapping:B'
+        mapping:
+          /a: /a
+      'mapping:B':
+        $id: 'mapping:B'
+        mapping:
+          /b: /b
+      'mapping:C':
+        $id: 'mapping:C'
+        mapping:
+          /data:
+            mapping: { $ref: 'mapping:A' }
+    input: { a: 1, b: 2 }
+    expected:
+      result:
+        data: { b: 2, a: 1 }
+        valid: true
+        errors: []

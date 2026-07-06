@@ -1,0 +1,97 @@
+# Reading values from source, input, output, and target.
+suite: source reads
+level: get
+tests:
+  - description: keyword pointer read
+    tier: core
+    descriptor: { source: /a }
+    input: { a: 1 }
+    expected: { value: 1, errors: [] }
+
+  - description: nested keyword pointer read
+    tier: core
+    descriptor: { source: /a/b }
+    input: { a: { b: 2 } }
+    expected: { value: 2, errors: [] }
+
+  - description: string pointer read
+    tier: core
+    descriptor: /a/b
+    input: { a: { b: 'c' } }
+    expected: { value: c, errors: [] }
+
+  - description: root pointer reads the whole source
+    tier: core
+    descriptor: /
+    input: { a: 1, b: 2 }
+    expected: { value: { a: 1, b: 2 }, errors: [] }
+
+  - description: absent value reads as undefined
+    tier: core
+    descriptor: { source: /missing }
+    input: { a: 1 }
+    expected: { value: __undefined__, errors: [] }
+
+  - description: empty descriptor evaluates to the current source
+    tier: core
+    descriptor: {}
+    input: { a: 1 }
+    expected: { value: { a: 1 }, errors: [] }
+
+  - description: input keyword reads from the root input
+    tier: core
+    descriptor: { input: /x/y }
+    input: { x: { y: 25 } }
+    expected: { value: 25, errors: [] }
+
+  - description: string pointers in a mapping
+    tier: core
+    level: map
+    descriptor:
+      source: /
+      mapping:
+        /a: /a/a/a
+    input:
+      a: { a: { a: 'A' } }
+    expected:
+      result: { a: 'A' }
+      errors: []
+
+  - description: output keyword reads a previously mapped value
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /a: { constant: 1 }
+        /b: { output: /a }
+    input: {}
+    expected:
+      result: { a: 1, b: 1 }
+      errors: []
+
+  - description: target keyword reads from the current target
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /a: { constant: 1 }
+        /b: { target: /a }
+    input: {}
+    expected:
+      result: { a: 1, b: 1 }
+      errors: []
+
+  - description: relative pointer resolves against the source path from the input root
+    tier: extended
+    level: map
+    descriptor:
+      source: /b
+      mapping:
+        /f: ../d/e
+    input:
+      a: 1
+      b: { c: 3 }
+      d: { e: 5 }
+    expected:
+      result: { f: 5 }
+      errors: []
