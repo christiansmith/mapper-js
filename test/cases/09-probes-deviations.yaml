@@ -199,14 +199,42 @@ tests:
         x: { a: 1 }
       errors: []
 
-  - description: 'F7: a slash-prefixed pointer containing .. reads literal tokens, unresolved'
-    deviation: F7-deref-ambiguity
+  - description: 'F9: a slash-prefixed pointer containing .. reads literal tokens, unresolved'
+    deviation: F9-relative-pointer-gating
     level: get
     descriptor: /b/../d/e
     input:
       b: { c: 3 }
       d: { e: 5 }
     expected: { value: __undefined__, errors: [] }
+
+  - description: 'F10: a variant list selects the first truthy result, skipping falsy defined values'
+    deviation: F10-variant-truthiness
+    level: map
+    descriptor:
+      mapping:
+        /x: ['/zero', '/one']
+    input: { zero: 0, one: 1 }
+    expected:
+      result: { x: 1 }
+      errors: []
+
+  - description: 'F10: the first combinator, by contrast, selects the first defined value'
+    deviation: F10-variant-truthiness
+    level: get
+    descriptor:
+      first: ['/zero', '/one']
+    input: { zero: 0, one: 1 }
+    expected: { value: 0, errors: [] }
+
+  - description: 'F11: $ref to an unregistered id fails with an unrelated TypeError'
+    deviation: F11-unknown-ref
+    level: map
+    descriptor:
+      mapping:
+        /x: { $ref: 'mapping:nope' }
+    input: { a: 1 }
+    throws: Cannot read properties of undefined
 
   - description: 'F8: stdout true logs the target object'
     tier: experimental
