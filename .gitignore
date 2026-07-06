@@ -7,3 +7,10 @@ deno.lock
 
 # Misc
 .DS_Store
+
+# LaTeX build artifacts
+docs/figures/*.aux
+docs/figures/*.log
+docs/figures/*.dvi
+docs/figures/*.fls
+docs/figures/*.fdb_latexmk

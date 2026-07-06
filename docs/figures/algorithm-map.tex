@@ -1,0 +1,43 @@
+% MAP — applying a structural descriptor (SPEC.md §5.4)
+% Typeset rendering of the normative pseudocode. Deviations A1/A2/A5 noted inline.
+\documentclass[varwidth=150mm,border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{algpseudocode}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\newcommand{\dev}[1]{\textcolor{gray}{\footnotesize\;// #1}}
+\begin{document}
+\begin{algorithmic}[1]
+\Function{Map}{$d$, $ctx$}
+  \State $d \gets \Call{Deref}{d, ctx}$
+  \State $ctx \gets \Call{Shift}{d, ctx}$
+  \State $\mathit{scope} \gets \Call{Get}{d, ctx}$ \Comment{evaluate this level's source scope}
+  \ForAll{$(\mathit{left} \leftarrow \mathit{right}) \in ctx.\mathit{pairings}$ in document order}
+    \State $r \gets \Call{Deref}{\mathit{right}, ctx}$
+    \State $rctx \gets \Call{Shift}{r, ctx, \{\mathit{source}{:}\ \mathit{scope}\}}$
+    \If{$r$ has pairings \textbf{or} $r.\mathit{switch}$}
+      \State $v \gets \Call{Get}{r, rctx}$
+      \If{$v$ is a string or number}
+        \State \Call{Set}{$\mathit{left}, \mathit{target}, v$}
+      \ElsIf{$v$ is a non-empty array}
+        \State $\mathit{items} \gets$ \textbf{parallel} $[\,\textsc{Nest}(r, rctx, \{\mathit{source}{:}\,v_i,\ \mathit{index}{:}\,i\})\ \textbf{for}\ v_i \in v\,]$
+        \State \Call{Set}{$\mathit{left}, \mathit{target}, \mathit{items}$}
+      \ElsIf{$v$ is an object}
+        \State \Call{Set}{$\mathit{left}, \mathit{target}, \textsc{Nest}(r, rctx, \{\mathit{source}{:}\ v\})$}
+        \State \dev{empty array: spec $\to$ [\,], ref.\ impl.\ nests to \{\} (A2)}
+      \ElsIf{$v$ is a boolean or null}
+        \State \Call{Set}{$\mathit{left}, \mathit{target}, v$} \dev{ref.\ impl.\ drops these (A1)}
+      \EndIf
+    \ElsIf{$r$ is an array}
+      \State $\mathit{results} \gets$ \textbf{parallel} $[\,\textsc{Read}(r_i, rctx)\ \textbf{for}\ r_i \in r\,]$
+      \State \Call{Set}{$\mathit{left}, \mathit{target}$, first \emph{defined} result} \dev{ref.\ impl.: first truthy (A5)}
+    \Else
+      \State \Call{Set}{$\mathit{left}, \mathit{target}, \textsc{Get}(r, rctx)$} \Comment{undefined never writes}
+    \EndIf
+    \If{$ctx.\mathit{errors} \neq \emptyset$} \Return \textsc{null} \Comment{short-circuit (§5.8)}
+    \EndIf
+  \EndFor
+  \State \Return $ctx.\mathit{target}$
+\EndFunction
+\end{algorithmic}
+\end{document}
