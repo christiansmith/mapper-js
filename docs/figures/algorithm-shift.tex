@@ -1,0 +1,25 @@
+% SHIFT — deriving a child context (SPEC.md §5.2, §5.6).
+% Resolution order per field: explicit override, then parent binding, then root.
+\documentclass[varwidth=150mm,border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{algpseudocode}
+\usepackage{amsmath}
+\begin{document}
+\begin{algorithmic}[1]
+\Function{Shift}{$d$, $ctx$, $\mathit{changes}$}
+  \State $\mathit{source} \gets \mathit{changes.source} \mathrel{?\!?} ctx.\mathit{source} \mathrel{?\!?} ctx.\mathit{input}$
+  \State $\mathit{target} \gets \mathit{changes.target} \mathrel{?\!?} ctx.\mathit{target} \mathrel{?\!?} ctx.\mathit{output}$
+  \If{$d.\mathit{source}$} \Comment{descend the source path}
+    \State $\mathit{paths.source} \gets \textsc{Resolve}(ctx.\mathit{paths.source},\ \mathit{changes.index}?,\ d.\mathit{source})$
+  \EndIf
+  \If{$d.\mathit{target}$}
+    \State $\mathit{paths.target} \gets \textsc{Resolve}(ctx.\mathit{paths.target},\ d.\mathit{target})$
+  \EndIf
+  \State $\mathit{mapping} \gets \textsc{Deref}(d.\mathit{mapping} \mathrel{?\!?} d.\mathit{each},\ ctx)$
+  \State $\mathit{pairings} \gets$ ordered entries of $\mathit{mapping}$ (\textsc{null} if none)
+  \State \Return child context: \Comment{shared fields propagate by reference}
+  \State \quad $\{\mathit{source},\ \mathit{target},\ \mathit{paths},\ \mathit{mapping},\ \mathit{pairings},$
+  \State \quad\ $\mathit{input},\ \mathit{output},\ \mathit{errors},\ \mathit{mappings},\ \mathit{initializers},\ \mathit{transformers},\ \mathit{plugins}\}$
+\EndFunction
+\end{algorithmic}
+\end{document}

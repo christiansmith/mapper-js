@@ -255,6 +255,12 @@ parent by the pairing that created it.
 
 Two functions define the model:
 
+Typeset figures: [`algorithm-map.svg`](docs/figures/algorithm-map.svg),
+[`algorithm-get.svg`](docs/figures/algorithm-get.svg) with its keyword-to-stage
+companion [`pipeline-get.svg`](docs/figures/pipeline-get.svg), and
+[`algorithm-shift.svg`](docs/figures/algorithm-shift.svg) for context
+derivation (§5.2).
+
 - **MAP** (§5.4) applies a structural descriptor: it iterates pairings and
   dispatches on the shape of each right-hand descriptor and value.
 - **GET** (§5.5) evaluates a single descriptor to a value through a fixed
@@ -379,7 +385,10 @@ GET(descriptor, context):
     otherwise                       → context.source            # scope pass-through
 
   # 2. dispatch
-  if switch: branch ← pointer read from value (switch.source)   # see note
+  if switch: scope  ← case of: switch.source → value            # Deviation A10
+                              switch.input  → context.input
+                              switch.output → context.output
+             branch ← pointer read from scope
              value  ← READ(cases[branch] ?? cases.default, context, source := value)
                        (undefined when branch matches nothing)
 
@@ -414,13 +423,18 @@ Requirements and notes:
   and `init` results; validation sees the *transformed* value; `default`
   applies **after** validation (an absent value with a `default` still fails
   `required`); `as` coerces last.
-- The `switch` branch key is read **from the value being switched on** —
-  `switch.source`, `switch.input`, and `switch.output` are aliases with
-  identical behavior in the reference implementation. Documents SHOULD use
-  `switch.source`. When the selected case has no `mapping`, the case
-  descriptor is evaluated against the *enclosing* context (the value override
-  applies only to mapping-bearing cases). A falsy branch key leaves the value
-  unswitched.
+- The `switch` keywords name the **scope the branch key is read from** — they
+  are not aliases: `switch.source` reads the branch key from the value being
+  switched on; `switch.input` reads it from the root input; `switch.output`
+  reads it from the root output. This allows a document to switch on context
+  the switched value does not itself carry. When more than one is present,
+  `source` takes precedence, then `input`, then `output`. Whichever scope
+  selects the branch, the chosen case always evaluates the *switched value*.
+  *Deviation A10: the reference implementation reads the branch key from the
+  switched value regardless of which keyword supplies the pointer.*
+- When the selected case has no `mapping`, the case descriptor is evaluated
+  against the *enclosing* context (the value override applies only to
+  mapping-bearing cases). A falsy branch key leaves the value unswitched.
 - Plugin daisy-chaining: every descriptor key matching a registered plugin
   fires, in document order, each replacing the value — this is the wiring
   mechanism of flow-style documents.
@@ -529,6 +543,7 @@ the same change.
 | **A7** | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                        | Resolves to undefined; evaluation fails with an unrelated type error.                                            | `F11-unknown-ref`                |
 | **A8** | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                            | Slash-prefixed pointers containing `..` are read as literal tokens (yielding undefined).                         | `F9-relative-pointer-gating`     |
 | **A9** | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                        | Loops indefinitely when `random` exceeds the number of distinct members.                                         | *(not probed — nonterminating)*  |
+| **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5). | All three read the branch key from the switched value. | `F12-switch-scope` |
 
 ## Appendix B. Test suite and case format (informative)
 

@@ -1,4 +1,4 @@
-FIGURES := algorithm-map algorithm-get
+FIGURES := algorithm-map algorithm-get algorithm-shift pipeline-get
 
 all: $(addsuffix .svg,$(FIGURES))
 

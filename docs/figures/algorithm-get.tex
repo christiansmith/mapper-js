@@ -1,38 +1,19 @@
-% GET — the value pipeline (SPEC.md §5.5)
-% Typeset rendering of the normative pseudocode. Stage order is normative.
+% GET — the value pipeline (SPEC.md §5.5), stage-level view.
+% Full per-stage semantics are in the normative text; keyword-to-stage
+% assignment is illustrated in pipeline-get.svg.
 \documentclass[varwidth=150mm,border=6pt]{standalone}
 \usepackage[T1]{fontenc}
 \usepackage{algpseudocode}
 \usepackage{amsmath}
-\usepackage{xcolor}
-\newcommand{\stage}[1]{\State \textbf{--- #1 ---}}
 \begin{document}
 \begin{algorithmic}[1]
 \Function{Get}{$d$, $ctx$}
-  \stage{1. locate}
-  \State $v \gets$ \textbf{case} $d$ \textbf{of}
-  \State \quad pointer string \Call{$\to$Read}{$ctx.\mathit{source}$} \textbf{;}\quad relative string $\to$ \Call{Read}{$ctx.\mathit{input}$} (\S4.4)
-  \State \quad $d.\mathit{source} \mid \mathit{target} \mid \mathit{input} \mid \mathit{output}$ $\to$ pointer read from that scope
-  \State \quad $d.\mathit{first} \mid \mathit{last} \mid \mathit{all}$ $\to$ \textbf{parallel} \Call{Read}{each}; select by list order
-  \State \quad otherwise $\to ctx.\mathit{source}$ \Comment{scope pass-through}
-  \stage{2. dispatch}
-  \If{$d.\mathit{switch}$}
-    \State $\mathit{branch} \gets$ pointer read \emph{from} $v$
-    \State $v \gets \Call{Read}{\mathit{cases}[\mathit{branch}] \,\|\, \mathit{cases.default},\ ctx,\ \{\mathit{source}{:}\ v\}}$
-  \EndIf
-  \stage{3. plugins}
-  \ForAll{descriptor keys $k$ registered as plugins, in document order}
-    \State $v \gets$ \textbf{await} $\mathit{plugins}[k](d[k], v, ctx)$;\quad narrow by $d[k].\mathit{pointer}$ if present
-  \EndFor
-  \stage{4. shape}
-  \State $\mathit{find} \to$ select member matching $\mathit{eq}$, narrow by $\mathit{pointer}$;\quad $\mathit{concat} \to$ flatten one level
-  \State $\mathit{init} \to \mathit{initializers}[\cdot](v, ctx)$;\quad $\mathit{constant} \to$ replace unconditionally
-  \State $\mathit{random} \to$ select member(s) (Experimental);\quad $\mathit{template} \to$ map, substitute $\{\{\cdot\}\}$
-  \State $\mathit{transform} \to$ apply named steps in order
-  \stage{5. validate (errors accumulate; $v$ passes through)}
-  \State $\mathit{type},\ \mathit{maximum},\ \mathit{minimum},\ \mathit{multipleOf},\ \mathit{minLength},\ \mathit{maxLength},\ \mathit{enum},\ \mathit{pattern},\ \mathit{required}$
-  \stage{6. finalize}
-  \State $\mathit{default} \to v$ if $v$ undefined;\quad $\mathit{regexp\_i} \to$ ``/$v$/i'' (Experimental);\quad $\mathit{as} \to$ coerce
+  \State $v \gets \textsc{Locate}(d, ctx)$ \Comment{pointer / scope reads; \textsc{first}/\textsc{last}/\textsc{all}; else scope pass-through}
+  \State $v \gets \textsc{Dispatch}(d, v, ctx)$ \Comment{\textsc{switch}: read branch key from named scope, evaluate case}
+  \State $v \gets \textsc{Plugins}(d, v, ctx)$ \Comment{\textbf{await} each registered plugin key, in document order}
+  \State $v \gets \textsc{Shape}(d, v, ctx)$ \Comment{select, initialize, and transform}
+  \State $\textsc{Validate}(d, v, ctx.\mathit{errors})$ \Comment{errors accumulate; $v$ passes through}
+  \State $v \gets \textsc{Finalize}(d, v)$ \Comment{\textsc{default}, then coercion}
   \State \Return $v$
 \EndFunction
 \end{algorithmic}
