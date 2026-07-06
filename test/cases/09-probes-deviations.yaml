@@ -236,6 +236,47 @@ tests:
     input: { a: 1 }
     throws: Cannot read properties of undefined
 
+  - description: 'F12: switch.input reads the branch key from the switched value, not the root input'
+    deviation: F12-switch-scope
+    level: map
+    descriptor:
+      mapping:
+        /x:
+          source: /obj
+          switch:
+            input: /kind
+            cases:
+              a: { source: /, mapping: { /got: /a } }
+              b: { source: /, mapping: { /got: /b } }
+    input:
+      kind: a
+      obj: { kind: b, a: 1, b: 2 }
+    expected:
+      result:
+        x: { got: 2 }
+      errors: []
+
+  - description: 'F12: switch.output likewise reads the branch key from the switched value'
+    deviation: F12-switch-scope
+    level: map
+    descriptor:
+      mapping:
+        /kind: { constant: a }
+        /x:
+          source: /obj
+          switch:
+            output: /kind
+            cases:
+              a: { source: /, mapping: { /got: /a } }
+              b: { source: /, mapping: { /got: /b } }
+    input:
+      obj: { kind: b, a: 1, b: 2 }
+    expected:
+      result:
+        kind: a
+        x: { got: 2 }
+      errors: []
+
   - description: 'F8: stdout true logs the target object'
     tier: experimental
     deviation: F8-stdout-side-effect
