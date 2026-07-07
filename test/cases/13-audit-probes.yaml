@@ -1,0 +1,99 @@
+# Characterization probes added after the conformance audit (SPEC.md Appendix A
+# rows A11, A12, and the §4.3 write-through behavior). Each pins actual
+# reference-implementation behavior the specification records as a deviation.
+suite: audit probes
+tests:
+  - description: 'F13: $extend registered at evaluation time is not resolved (ancestor pairings lost)'
+    deviation: F13-late-registration
+    level: mapper
+    descriptor:
+      mappings:
+        'mapping:base':
+          $id: 'mapping:base'
+          mapping: { /a: /a }
+        'mapping:derived':
+          $id: 'mapping:derived'
+          $extend: 'mapping:base'
+          mapping: { /b: /b }
+    input: { a: 1, b: 2 }
+    expected:
+      result: { b: 2, valid: true, errors: [] }
+      valid: true
+
+  - description: 'F13: unknown $extend ancestor at evaluation time raises no error'
+    deviation: F13-late-registration
+    level: mapper
+    descriptor:
+      mappings:
+        'mapping:orphan':
+          $id: 'mapping:orphan'
+          $extend: 'mapping:missing'
+          mapping: { /b: /b }
+    input: { b: 2 }
+    expected:
+      result: { b: 2, valid: true, errors: [] }
+      valid: true
+
+  - description: 'an overridden $extend pairing evaluates in the descendant position'
+    tier: core
+    level: mapper
+    id: 'mapping:child'
+    mappings:
+      'mapping:parent':
+        $id: 'mapping:parent'
+        mapping:
+          /b: { constant: original }
+          /c: { constant: 1 }
+      'mapping:child':
+        $id: 'mapping:child'
+        $extend: 'mapping:parent'
+        mapping:
+          /b: { output: /c }
+    input: {}
+    expected:
+      # /b overrides and moves after /c, so it reads the already-written /c
+      result: { c: 1, b: 1, valid: true, errors: [] }
+      valid: true
+
+  - description: 'F14: a falsy each element is evaluated against the parent scope'
+    deviation: F14-falsy-scope
+    level: map
+    descriptor:
+      mapping:
+        /out:
+          source: /items
+          each:
+            /v: /
+    input:
+      items: [1, 0, 2]
+    expected:
+      result:
+        out:
+          - { v: 1 }
+          - { v: { items: [1, 0, 2] } }
+          - { v: 2 }
+      errors: []
+
+  - description: 'write-through a falsy intermediate replaces it with a container'
+    tier: core
+    deviation: write-through
+    level: map
+    descriptor:
+      mapping:
+        /a: { constant: 0 }
+        /a/b: { constant: 1 }
+    input: {}
+    expected:
+      result: { a: { b: 1 } }
+      errors: []
+
+  - description: 'write-through a truthy primitive intermediate throws'
+    tier: core
+    deviation: write-through
+    level: map
+    descriptor:
+      mapping:
+        /a: { constant: 5 }
+        /a/b: { constant: 1 }
+    input: {}
+    throws: Cannot create property
