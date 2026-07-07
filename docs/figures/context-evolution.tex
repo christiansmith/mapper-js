@@ -1,38 +1,67 @@
-% Context derivation and target accretion (SPEC.md §8.2).
-% Snapshot of the context chain while an `each` element mapping evaluates:
-% shared roots are referenced by every level; source/target/paths rebind.
+% Context derivation as data (SPEC.md §5.2, §8.2).
+% Three contexts during `each` over /items with input { items: [{n:1},{n:2}] }
+% (example 6.2-2). Shared fields hold the SAME objects at every level (marked
+% with matching symbols, gray); rebound fields (black) are what SHIFT/NEST
+% change.
 \documentclass[border=8pt]{standalone}
 \usepackage[T1]{fontenc}
+\usepackage{amssymb}
 \usepackage{tikz}
-\usetikzlibrary{positioning,arrows.meta,fit}
+\usetikzlibrary{positioning,arrows.meta}
+\newcommand{\shr}[1]{\textcolor{black!45}{#1}}
 \begin{document}
 \begin{tikzpicture}[
-  font=\sffamily\small,
-  ctx/.style={draw=black!60, rounded corners=3pt, align=left, inner sep=6pt, fill=black!3},
-  shared/.style={draw=black!60, rounded corners=3pt, align=left, inner sep=6pt, fill=blue!6},
-  lbl/.style={font=\sffamily\bfseries\small},
-  ref/.style={-{Stealth[length=2.2mm]}, black!45, dashed},
-  derive/.style={-{Stealth[length=2.8mm]}, thick, black!70}
+  ctx/.style={draw=black!60, rounded corners=3pt, inner sep=7pt, align=left,
+              font=\ttfamily\footnotesize, fill=black!3},
+  hdr/.style={font=\sffamily\bfseries\small},
+  derive/.style={-{Stealth[length=2.8mm]}, thick, black!70},
+  note/.style={font=\sffamily\footnotesize, text=black!60},
+  arrlbl/.style={font=\sffamily\scriptsize, text=black!60, align=center}
 ]
-  % shared roots
-  \node[shared] (input) {\textbf{input} (read-only)\\\texttt{\{title, ids, contributors, …\}}};
-  \node[shared, below=6mm of input] (output) {\textbf{output} = top-level target\\\texttt{\{citation: \{title, doi, …\}\}} \emph{accretes}\\[2pt]\textbf{errors} \texttt{[]} · \textbf{registries}};
+  % three records, top-aligned
+  \node[ctx] (c0) at (0,0) {%
+\shr{input:\ \ \ $\bullet$}\\
+\shr{output:\ \ $\blacksquare$}\\
+\shr{errors:\ \ $\blacktriangle$}\\
+source:\ \ $\bullet$\ \shr{(= input)}\\
+target:\ \ $\blacksquare$\ \shr{(= output)}\\
+paths:\ \ \ /\ $\rightarrow$\ /};
 
-  % context chain
-  \node[ctx, right=22mm of input] (c0) {\textbf{context$_0$} (top level)\\source = input · target = output\\paths: \texttt{/} → \texttt{/}};
-  \node[ctx, below=6mm of c0] (c1) {\textbf{context$_1$} (\texttt{/citation/authors} pairing)\\source = \texttt{/contributors} · target = output\\paths: \texttt{/contributors} → \texttt{/}};
-  \node[ctx, below=6mm of c1] (c2) {\textbf{context$_2$} (\texttt{each} element 0)\\source = element · target = \textbf{fresh} \texttt{\{\}}\\paths: \texttt{/contributors/0} → \texttt{/}};
+  \node[ctx, anchor=north west] (c1) at ([xshift=18mm]c0.north east) {%
+\shr{input:\ \ \ $\bullet$}\\
+\shr{output:\ \ $\blacksquare$}\\
+\shr{errors:\ \ $\blacktriangle$}\\
+source:\ \ [\{n:1\}, \{n:2\}]\\
+target:\ \ $\blacksquare$\ \shr{(= output)}\\
+paths:\ \ \ /items\ $\rightarrow$\ /};
 
-  \draw[derive] (c0) -- node[right, font=\sffamily\footnotesize, text=black!60] {\textsc{shift}: rebind source} (c1);
-  \draw[derive] (c1) -- node[right, font=\sffamily\footnotesize, text=black!60] {\textsc{nest}: fresh target, index on path} (c2);
+  \node[ctx, anchor=north west] (c2) at ([xshift=18mm]c1.north east) {%
+\shr{input:\ \ \ $\bullet$}\\
+\shr{output:\ \ $\blacksquare$}\\
+\shr{errors:\ \ $\blacktriangle$}\\
+source:\ \ \{n:1\}\\
+target:\ \ \{\}\ fresh\\
+paths:\ \ \ /items/0\ $\rightarrow$\ /};
 
-  \draw[ref] (c0.west) -- (input.east);
-  \draw[ref] (c0.west) ++(0,-2mm) -- (output.east);
-  \draw[ref] (c1.west) -- (output.east);
-  \draw[ref] (c2.west) -- (output.north east);
+  % headers, centered above each record
+  \node[hdr, above=1.5mm of c0.north] {context$_0$ · top};
+  \node[hdr, above=1.5mm of c1.north] {context$_1$ · /out pairing};
+  \node[hdr, above=1.5mm of c2.north] {context$_2$ · element 0};
 
-  \node[font=\sffamily\footnotesize, text=black!55, below=4mm of c2, align=left]
-    {dashed = shared by reference (input, output, errors, registries)\\
-     element target \texttt{\{family, given\}} is written into the parent by its pairing — no merge step};
+  % title line, left-aligned with the first record, clear of the headers
+  \node[note, anchor=south west] at ([yshift=9mm]c0.north west)
+    {input = \texttt{\{ items: [\{n:1\}, \{n:2\}] \}}\quad(example 6.2-2)};
+
+  % derivation arrows at a shared height, two-line centered labels
+  \draw[derive] (c0.east) -- (c1.west |- c0.east)
+    node[midway, above=1mm, arrlbl] {\textsc{shift}}
+    node[midway, below=1mm, arrlbl] {rebind\\source};
+  \draw[derive] (c1.east |- c0.east) -- (c2.west |- c0.east)
+    node[midway, above=1mm, arrlbl] {\textsc{nest}}
+    node[midway, below=1mm, arrlbl] {fresh target\\+ index};
+
+  % legend, left-aligned with the first record
+  \node[note, anchor=north west] at ([yshift=-4mm]c0.south west)
+    {$\bullet$\ $\blacksquare$\ $\blacktriangle$\ = the \emph{same} shared objects in every context; black fields are rebound};
 \end{tikzpicture}
 \end{document}
