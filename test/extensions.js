@@ -14,7 +14,11 @@ import JSONPointer from '../src/JSONPointer.js'
 export const initializers = {
   uuid: () => 'urn:uuid:00000000-0000-4000-8000-000000000000',
   'date-time': () => '2026-01-01T00:00:00.000Z',
-  counterfactual: (value) => (value === undefined ? 'initialized' : value)
+  counterfactual: (value) => (value === undefined ? 'initialized' : value),
+  // deliberately invalid: initializers must be synchronous (SPEC.md §7.2);
+  // used to characterize what happens when one is not
+  asyncUnsupported: async () => 'never',
+  asyncList: async () => ['x', 'y']
 }
 
 export const transformers = {
@@ -32,6 +36,13 @@ export const plugins = {
   wrap: async (options, value) => ({ [options.key || 'wrapped']: value }),
   delayed: async (options, value) => {
     await new Promise((resolve) => setTimeout(resolve, options.ms || 1))
+    return value
+  },
+  failing: async () => {
+    throw new Error('plugin failure: failing')
+  },
+  flag: async (options, value, context) => {
+    context.errors.push({ plugin: 'flag', message: options.message || 'flagged' })
     return value
   }
 }

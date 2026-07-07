@@ -1,0 +1,43 @@
+# Extension interface contract (SPEC.md §7): synchrony requirements, error
+# propagation, and extension-appended errors.
+suite: extension interfaces
+tests:
+  - description: an asynchronous initializer's promise bypasses the random stage
+    tier: core
+    level: get
+    descriptor: { init: asyncList, random: 1 }
+    input: {}
+    expected:
+      value: [x, y]
+      errors: []
+
+  - description: an asynchronous initializer's promise is incidentally resolved before finalize
+    tier: core
+    level: get
+    descriptor: { source: /v, init: asyncUnsupported, as: string }
+    input: { v: 1 }
+    expected:
+      value: never
+      errors: []
+
+  - description: a throwing plugin propagates as a host exception, not a validation error
+    tier: core
+    level: get
+    descriptor:
+      source: /v
+      failing: {}
+    input: { v: 1 }
+    throws: 'plugin failure: failing'
+
+  - description: an extension-appended error short-circuits like a validation error
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /x: { source: /v, flag: { message: rejected by plugin } }
+        /y: /v
+    input: { v: 1 }
+    expected:
+      result: null
+      errors:
+        - { plugin: flag, message: rejected by plugin }
