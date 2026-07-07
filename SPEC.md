@@ -55,9 +55,9 @@ with the reference implementation is explicitly required.
 
 ### 1.3 Status of this document
 
-Sections 1–6 and Appendices A–B are complete in this draft. Sections 7–9
-(extension interfaces, algorithmic characteristics, worked examples) are
-outlined and reserved for the next revisions of this draft.
+Sections 1–7 and Appendices A–B are complete in this draft. Sections 8–9
+(algorithmic characteristics, worked examples) are outlined and reserved for
+the next revisions of this draft.
 
 ## 2. Conformance
 
@@ -729,9 +729,105 @@ the implementation's diagnostic output channel. MUST NOT affect the result.
 
 ## 7. Extension interfaces
 
-*Reserved — next revision.* Interface contract for initializers,
-transformers, and plugins (§3.6): signatures, context capabilities,
-determinism and idempotency expectations, asynchrony, and error propagation.
+Extensions are host-language functions registered with the evaluator (§3.6).
+They are how mapping documents reach beyond pure reshaping: generated values,
+custom transformations, and effectful operations (I/O) all enter through
+these three interfaces. Test cases exercise them through the deterministic
+set in `test/extensions.js`.
+
+### 7.1 Registration
+
+An evaluator accepts three named-function registries at construction:
+`initializers`, `transformers`, and `plugins`. Registries are part of the
+shared context (§5.2): every scope of an invocation sees the same functions.
+Plugin names share the descriptor keyword namespace — a plugin named like a
+built-in keyword is unreachable, and implementations SHOULD warn at
+registration (§3.6). Initializer and transformer names inhabit their own
+value nam260706-161112-smith-draft-catalog-reviewespaces (`init:` and `transform:` operands) and cannot collide with
+keywords.
+
+### 7.2 Initializers
+
+```
+initializer(value, context) → value
+```
+
+Invoked by the `init` keyword at the shape stage (§6.6). Receives the current
+pipeline value — often undefined, since a common idiom is generating a value
+for a target location with no source (identifiers, timestamps) — and the full
+context (§7.5). The return value replaces the pipeline value.
+
+Initializers MUST be synchronous. The reference implementation does not await
+them: an asynchronous initializer's promise flows through the subsequent
+shape stages, which then misbehave — `random`, for example, silently passes
+the promise through instead of selecting — before an internal await
+incidentally resolves it ahead of validation and finalize. Portable documents
+MUST NOT rely on that artifact. *Cases: `11-extension-interfaces`.*
+
+### 7.3 Transformers
+
+```
+transformer(value, context, options?) → value
+```
+
+Invoked by `transform` steps in order (§6.6). A string step passes no
+options; an object step passes **the step object itself** as `options` — the
+transformer reads its parameters from its own name's key (e.g. a step
+`{ "split": ", " }` invokes `split` with `options.split === ", "`).
+Transformers MUST be synchronous, for the same reason as initializers.
+*Cases: `08-extensions`.*
+
+### 7.4 Plugins
+
+```
+async plugin(options, value, context) → value
+```
+
+Invoked at the plugins stage (§5.5, §6.8) for every descriptor key matching a
+registered plugin name, in document order; each replaces the pipeline value,
+and `options.pointer` narrows the result. `options` is the descriptor entry's
+value — the plugin's configuration authored in the mapping document. Note the
+role reversal relative to transformers: the pipeline *value* frequently acts
+as the plugin's runtime **parameters** (identifiers to fetch, variables to
+substitute) while `options` carries the static shape of the operation
+(endpoints, methods, templates).
+
+Plugins are the asynchrony boundary: they are awaited, and concurrent
+fan-out (§5.7) is where plugin I/O parallelizes. A plugin that throws (or
+rejects) propagates to the caller as a host exception — it does **not**
+participate in the validation error model (§5.8); structured capture is
+future work (Appendix C). *Cases: `08-extensions`, `11-extension-interfaces`.*
+
+### 7.5 Context capabilities
+
+Extensions receive the evaluation context (§5.2) and MAY:
+
+- **read any scope** — `source`, `target`, `input`, `output`, and `paths`;
+- **append error objects** to `context.errors`; appended errors participate
+  in short-circuiting and the envelope exactly like validation errors —
+  this is the supported way for an extension to reject a document or value;
+- **invoke other registered extensions** through the context's registries —
+  plugin composition (a fetch plugin consulting cache and throttle plugins,
+  for example) is an intended pattern;
+- **recursively invoke evaluation** on a sub-descriptor with a derived
+  context (e.g. mapping a request body before sending it). Implementations
+  MUST be re-entrant: a nested evaluation started by an extension follows
+  this specification with its own scopes while sharing the invocation's
+  roots, registries, and error accumulator.
+
+Extensions MUST NOT rebind the context's shared fields and SHOULD treat the
+input as immutable. Nothing in this section grants extensions influence over
+pairing order or pipeline stage order — those remain fixed (§3.2, §5.5).
+
+### 7.6 Determinism and portability
+
+The extension names a document uses are part of that document's contract: a
+document is only portable to deployments providing compatible functions under
+the same names. Deployments SHOULD document their extension set (a
+declaration mechanism in the document itself is future work — Appendix C).
+Conformance test cases MUST use deterministic extensions; effectful plugins
+SHOULD be idempotent per evaluation so retries and concurrent fan-out (§5.7)
+are safe.
 
 ## 8. Algorithmic characteristics
 
@@ -808,6 +904,13 @@ Recorded for future revisions, not requirements of this draft:
   the error model (§5.8).
 - **Diagnostic mode** — surfacing unknown transformer/initializer names,
   unreachable plugin registrations, and invalid pointer strings.
+- **Extraction candidates** — `stdout` and `regexp_i` are deployment-shaped
+  conveniences living in the core engine (their Experimental tier reflects
+  this); a future revision may remove them from the core keyword set in favor
+  of the extension interfaces (§7).
+- **Extension-requirements declaration** — a way for a mapping document to
+  declare the extension names (and versions) it depends on, so deployments
+  can validate a document's portability before evaluating it (§7.6).
 
 ## References
 
