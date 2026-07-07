@@ -41,6 +41,15 @@ export const plugins = {
   failing: async () => {
     throw new Error('plugin failure: failing')
   },
+  // deterministic lookup used by the worked examples (SPEC.md §9.2):
+  // the pipeline value carries the parameters, options carries the shape
+  db: async (options, value) => {
+    const tables = {
+      people: { '42': { id: '42', name: 'Ada', role: 'admin' } }
+    }
+    const row = tables[value?.table]?.[value?.id]
+    return row ? [row] : []
+  },
   flag: async (options, value, context) => {
     context.errors.push({ plugin: 'flag', message: options.message || 'flagged' })
     return value

@@ -1,0 +1,74 @@
+# The worked examples of SPEC.md §9, verbatim. If these cases change, the
+# specification text must change in the same commit, and vice versa.
+suite: worked examples
+level: mapper
+tests:
+  - description: '§9.1 reshaping: bibliographic record → citation'
+    tier: core
+    descriptor:
+      mapping:
+        /citation/title: /title
+        /citation/doi:
+          source: /ids
+          find:
+            eq: { idType: doi }
+            pointer: /value
+          required: true
+        /citation/year: { first: ['/issued/year', '/created/year'], as: number }
+        /citation/authors:
+          source: /contributors
+          each:
+            /family: /surname
+            /given: { source: /forename, default: '' }
+        /citation/source: { constant: 'import' }
+    input:
+      title: On Mapping
+      ids:
+        - { idType: issn, value: '2049-3630' }
+        - { idType: doi, value: '10.1000/xyz123' }
+      issued: { year: '2024' }
+      contributors:
+        - { surname: Hopper, forename: Grace }
+        - { surname: Noether }
+    expected:
+      result:
+        citation:
+          title: On Mapping
+          doi: '10.1000/xyz123'
+          year: 2024
+          authors:
+            - { family: Hopper, given: Grace }
+            - { family: Noether, given: '' }
+          source: import
+        valid: true
+        errors: []
+      valid: true
+      errors: []
+
+  - description: '§9.2 flow: a lookup-and-respond document'
+    tier: core
+    descriptor:
+      mapping:
+        /params/table: { constant: people }
+        /params/id: /request/id
+        /row:
+          output: /params
+          db: { pointer: /0 }
+        /response:
+          output: /
+          switch:
+            output: /row/role
+            cases:
+              admin: { source: /, mapping: { /name: /row/name, /admin: { constant: true } } }
+              default: { source: /, mapping: { /name: /row/name } }
+    input:
+      request: { id: '42' }
+    expected:
+      result:
+        params: { table: people, id: '42' }
+        row: { id: '42', name: Ada, role: admin }
+        response: { name: Ada, admin: true }
+        valid: true
+        errors: []
+      valid: true
+      errors: []
