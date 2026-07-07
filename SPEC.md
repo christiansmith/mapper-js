@@ -7,6 +7,7 @@
 | **Status** | Draft 0.1 |
 | **Reference implementation** | `@christiansmith/mapper-js` 0.1.1 (git `fa4de6f`) |
 | **Test suite** | `test/cases/` (see [Appendix B](#appendix-b-test-suite-and-case-format-informative)) |
+| **Quick reference** | [`docs/quick-reference.md`](docs/quick-reference.md) |
 
 ---
 
@@ -570,7 +571,15 @@ unknown descriptor keys other than registered plugin names (§6.8).
 Reads from the current source scope (§5.2). On a structural descriptor,
 `source` additionally rebinds the source scope and extends the source *path*
 for descendants (§5.6 SHIFT) — reading and scoping are the same keyword.
-An absent location reads as undefined. *Cases: `01-source-reads`.*
+An absent location reads as undefined. *Cases: `01-source-reads`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.1-1
+descriptor: { source: /user/name }
+input:      { user: { name: Ada } }
+value:      Ada
+```
 
 Note the asymmetry with `target` below: `source` is the only keyword that
 rebinds a scope on structural descent. Nested mappings always write into a
@@ -585,18 +594,52 @@ read observes only writes made by earlier pairings. On a structural
 descriptor, `target` selects the *read* scope for its pairings; it does
 **not** rebind where they write — nested mappings always write into the fresh
 target created for their pairing (an internal target path is tracked but
-never consumed). *Cases: `01-source-reads`.*
+never consumed). *Cases: `01-source-reads`, `14-keyword-examples`.*
+
+```yaml
+# example 6.1-2
+descriptor:
+  mapping:
+    /id: { constant: 7 }
+    /copy: { target: /id }
+input:  {}
+result: { id: 7, copy: 7 }
+```
 
 #### `input`
 **Core · GET locate · value: JSON Pointer string.**
 Reads from the root input, regardless of the current scope. *Cases:
-`01-source-reads`.*
+`01-source-reads`, `14-keyword-examples`.*
+
+```yaml
+# example 6.1-3
+descriptor:
+  mapping:
+    /out:
+      source: /nested
+      mapping:
+        /fromScope: /val
+        /fromRoot: { input: /rootVal }
+input:  { rootVal: R, nested: { val: V } }
+result: { out: { fromScope: V, fromRoot: R } }
+```
 
 #### `output`
 **Core · GET locate · value: JSON Pointer string.**
 Reads from the root output (the top-level target), regardless of the current
 scope. With `output: /` the whole output-so-far becomes the value — the
-common way to post-process accumulated results. *Cases: `01-source-reads`.*
+common way to post-process accumulated results. *Cases: `01-source-reads`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.1-4
+descriptor:
+  mapping:
+    /a: { constant: 1 }
+    /b: { output: /a }
+input:  {}
+result: { a: 1, b: 1 }
+```
 
 String-form descriptors (pointer strings, relative references, registry
 names) are specified in §3.3 and §4; they are equivalent to the corresponding
@@ -609,7 +652,18 @@ keyword forms.
 Declares the pairings this descriptor builds (§5.4). As a nested keyword it
 opens a child scope with a fresh target; the produced object is the pairing's
 value. The value may be `{ "$ref": id }` or (equivalently) a registry
-reference resolved at evaluation time. *Cases: `05-mapping-core`,
+reference resolved at evaluation time.
+
+```yaml
+# example 6.2-1
+descriptor:
+  mapping:
+    /person/name: /n
+input:  { n: Ada }
+result: { person: { name: Ada } }
+```
+
+*Cases: `05-mapping-core`, `14-keyword-examples`,
 `06-references`.*
 
 #### `each`
@@ -617,7 +671,21 @@ reference resolved at evaluation time. *Cases: `05-mapping-core`,
 Exact alias of `mapping`; when both are present, `mapping` takes precedence.
 Idiomatically used when the scope value is an array: each element is mapped
 in parallel with the element as source and its index appended to the source
-path (§5.4, §5.7). *Cases: `05-mapping-core`, `06-references`,
+path (§5.4, §5.7).
+
+```yaml
+# example 6.2-2
+descriptor:
+  mapping:
+    /out:
+      source: /items
+      each:
+        /v: /n
+input:  { items: [{ n: 1 }, { n: 2 }] }
+result: { out: [{ v: 1 }, { v: 2 }] }
+```
+
+*Cases: `05-mapping-core`, `06-references`, `14-keyword-examples`,
 `08-extensions`.*
 
 ### 6.3 Registry
@@ -629,7 +697,22 @@ Names a mapping in the registry (§3.5). Re-registration replaces.
 #### `$ref`
 **Core · evaluation-time resolution · value: string.**
 Substitutes the registered mapping for the descriptor carrying it. Unknown
-ids are diagnostics. *Deviation A7.* *Cases: `06-references`,
+ids are diagnostics. *Deviation A7.*
+
+```yaml
+# example 6.3-1
+descriptor: { $ref: 'mapping:Kv' }
+mappings:
+  'mapping:Kv':
+    $id: 'mapping:Kv'
+    mapping:
+      /key: /k
+      /value: /v
+input:  { k: a, v: 1 }
+result: { key: a, value: 1 }
+```
+
+*Cases: `06-references`, `14-keyword-examples`,
 `09-probes-deviations` (F11).*
 
 #### `$extend`
@@ -639,7 +722,22 @@ ancestor-only pairings first in ancestor order, then all descendant pairings
 in descendant order (overridden keys evaluate in the descendant's position —
 observable through `target`/`output` reads). Only the pairing map is merged;
 other descriptor keywords are discarded (§3.5). Unknown ids MUST raise an
-error at registration. *Deviation A11.* *Cases: `06-references`,
+error at registration. *Deviation A11.*
+
+```yaml
+# example 6.3-2 (evaluated by registered id)
+mappings:
+  'mapping:Parent': { $id: 'mapping:Parent', mapping: { /a: /a } }
+  'mapping:Child':
+    $id: 'mapping:Child'
+    $extend: 'mapping:Parent'
+    mapping: { /b: /b }
+id:     'mapping:Child'
+input:  { a: 1, b: 2 }
+result: { a: 1, b: 2, valid: true, errors: [] }
+```
+
+*Cases: `06-references`, `14-keyword-examples`,
 `10-catalog-gaps`, `13-audit-probes`.*
 
 #### `description`
@@ -654,14 +752,41 @@ Evaluate every listed descriptor (concurrently permitted, §5.7) and select:
 `first` — the first defined result in list order; `last` — the last defined
 result; `all` — every defined result, in list order. Contrast with variant
 arrays (§5.4), whose selection is currently truthiness-based in the reference
-implementation (*Deviation A5*). *Cases: `02-combinators`,
+implementation (*Deviation A5*).
+
+```yaml
+# example 6.4-1
+descriptor: { first: ['/missing', '/b'] }
+input:      { b: 2 }
+value:      2
+
+# example 6.4-2
+descriptor: { last: ['/a', '/missing'] }
+input:      { a: 1 }
+value:      1
+
+# example 6.4-3
+descriptor: { all: ['/a', '/b'] }
+input:      { a: 1, b: 2 }
+value:      [1, 2]
+```
+
+*Cases: `02-combinators`, `14-keyword-examples`,
 `09-probes-deviations` (F10).*
 
 #### `concat`
 **Core · GET shape · value: `true`.**
 When the pipeline value is an array, flattens it one level (an array of
 arrays becomes one array). Non-array values pass through unchanged. Usually
-paired with `all`. *Cases: `02-combinators`, `10-catalog-gaps`.*
+paired with `all`. *Cases: `02-combinators`, `10-catalog-gaps`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.4-4
+descriptor: { all: ['/a', '/b'], concat: true }
+input:      { a: [1, 2], b: [3] }
+value:      [1, 2, 3]
+```
 
 ### 6.5 Dispatch and selection
 
@@ -675,7 +800,24 @@ case (or `cases.default`; a `cases` map with only `default` is a valid
 "always" form) is evaluated with the *pipeline value* as its source when it
 carries a `mapping`; a plain-pointer case evaluates against the enclosing
 context (open question, Appendix C). No matching case and no `default`
-yields undefined; a falsy branch key leaves the value unswitched. *Cases:
+yields undefined; a falsy branch key leaves the value unswitched.
+
+```yaml
+# example 6.5-1
+descriptor:
+  mapping:
+    /x:
+      source: /
+      switch:
+        source: /kind
+        cases:
+          a: /valA
+          b: /valB
+input:  { kind: b, valA: 1, valB: 2 }
+result: { x: 2 }
+```
+
+*Cases: `14-keyword-examples`,
 `07-switch`, `09-probes-deviations` (F12), `10-catalog-gaps`.*
 
 #### `find`
@@ -684,7 +826,22 @@ Selects the first member of the pipeline value (a non-array **object** is
 treated as a one-member list; non-object values — including `null` — skip
 `find` and pass through unchanged) whose properties strictly equal every `eq`
 entry (shallow comparison). `pointer` then narrows the selected member. No
-match yields undefined. *Cases: `02-combinators`, `10-catalog-gaps`.*
+match yields undefined. *Cases: `02-combinators`, `10-catalog-gaps`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.5-2
+descriptor:
+  source: /ids
+  find:
+    eq: { t: doi }
+    pointer: /v
+input:
+  ids:
+    - { t: issn, v: '2049-3630' }
+    - { t: doi, v: '10.1000/x' }
+value: '10.1000/x'
+```
 
 ### 6.6 Value pipeline
 
@@ -692,12 +849,28 @@ match yields undefined. *Cases: `02-combinators`, `10-catalog-gaps`.*
 **Core · GET shape · value: string (initializer name).**
 Applies the named initializer `fn(value, context)` (§3.6). Unknown names are
 skipped silently in the reference implementation; a diagnostic mode is
-RECOMMENDED. *Cases: `08-extensions`, `10-catalog-gaps`.*
+RECOMMENDED. *Cases: `08-extensions`, `10-catalog-gaps`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.6-1 (uuid is the test suite's deterministic initializer)
+descriptor: { init: uuid }
+input:      {}
+value:      'urn:uuid:00000000-0000-4000-8000-000000000000'
+```
 
 #### `constant`
 **Core · GET shape · value: any JSON value.**
 Replaces the pipeline value unconditionally (unlike `default`). Anything the
-locate stage read is discarded. *Cases: `03-finalize`.*
+locate stage read is discarded. *Cases: `03-finalize`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.6-2
+descriptor: { source: /a, constant: fixed }
+input:      { a: 1 }
+value:      fixed
+```
 
 #### `random`, `unique`
 **Experimental · GET shape · value: positive integer / `true`.**
@@ -713,7 +886,20 @@ it and substitutes each `{{param}}` with the mapped result's top-level
 `param` property; placeholders whose mapped value is **falsy** (absent, `0`,
 `""`, `false`, `null`) render as the empty string. Non-object values pass
 through unchanged — but note `null` counts as an object here and triggers the
-template (evaluating against the parent scope via Deviation A12). *Cases:
+template (evaluating against the parent scope via Deviation A12).
+
+```yaml
+# example 6.6-3
+descriptor:
+  source: /p
+  template: 'Hi {{n}}!'
+  mapping:
+    /n: /first
+input:  { p: { first: Ada } }
+value:  'Hi Ada!'
+```
+
+*Cases: `14-keyword-examples`,
 `08-extensions`, `10-catalog-gaps`, `13-audit-probes`.*
 
 #### `transform`
@@ -722,17 +908,45 @@ Applies named transformers (§3.6) in order. A string step invokes
 `fn(value, context)`; an object step invokes each of its keys' transformers
 (document order) as `fn(value, context, step)` — the step object itself is
 the options argument. Unknown names are skipped silently in the reference
-implementation; a diagnostic mode is RECOMMENDED. *Cases: `08-extensions`.*
+implementation; a diagnostic mode is RECOMMENDED. *Cases: `08-extensions`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.6-4 (split and last are test-suite transformers)
+descriptor:
+  source: /s
+  transform:
+    - { split: ', ' }
+    - last
+input:  { s: 'a, b' }
+value:  b
+```
 
 #### `default`
 **Core · GET finalize · value: any JSON value.**
 Replaces the value only when it is undefined, **after** validation — an
-absent-but-defaulted value still fails `required`. *Cases: `03-finalize`.*
+absent-but-defaulted value still fails `required`. *Cases: `03-finalize`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.6-5
+descriptor: { source: /missing, default: fallback }
+input:      {}
+value:      fallback
+```
 
 #### `regexp_i`
 **Experimental · GET finalize · value: `true`.**
 Wraps the value as the string `/value/i` (a case-insensitive regular
-expression literal for downstream query languages). *Cases: `03-finalize`.*
+expression literal for downstream query languages). *Cases: `03-finalize`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.6-6
+descriptor: { source: /s, regexp_i: true }
+input:      { s: abc }
+value:      '/abc/i'
+```
 
 #### `as`
 **Core · GET finalize · value: `"string" | "number" | "boolean" | "json"`.**
@@ -742,7 +956,16 @@ undefined (*Deviation A4*). **[KW-as-1]** A numeric coercion that does not
 produce a finite number (e.g. `as: number` of a non-numeric string) is a
 diagnostic; implementations MUST NOT emit non-JSON numbers (*the reference
 implementation
-produces NaN, which serializes as `null` — Deviation A4*). *Cases:
+produces NaN, which serializes as `null` — Deviation A4*).
+
+```yaml
+# example 6.6-7
+descriptor: { source: /n, as: string }
+input:      { n: 7 }
+value:      '7'
+```
+
+*Cases: `14-keyword-examples`,
 `03-finalize`, `09-probes-deviations` (F5), `10-catalog-gaps`.*
 
 ### 6.7 Validation
@@ -759,6 +982,21 @@ the offending `value`, provenance (the descriptor's read keyword, e.g.
 ```
 
 Exact shapes per keyword are pinned by `04-validation`.
+
+```yaml
+# example 6.7-1
+descriptor: { source: /age, type: number, minimum: 0 }
+input:      { age: 41 }
+value:      41
+errors:     []
+
+# example 6.7-2
+descriptor: { source: /age, minimum: 21 }
+input:      { age: 16 }
+value:      16
+errors:
+  - { source: /age, value: 16, minimum: 21, message: cannot be less than 21 }
+```
 
 | Keyword | Value | Constraint checked |
 |---|---|---|
@@ -778,12 +1016,32 @@ Any descriptor key matching a registered plugin name invokes
 `await plugin(options, value, context)`, replacing the pipeline value. All
 matching keys fire, in document order — plugins chain (§3.2, §5.5). This is
 the asynchrony and effect boundary (§3.6) and the wiring mechanism of
-flow-style documents. *Cases: `08-extensions`, `09-probes-deviations` (F1).*
+flow-style documents. *Cases: `08-extensions`, `09-probes-deviations` (F1),
+`14-keyword-examples`.*
+
+```yaml
+# example 6.8-1 (wrap is the test suite's deterministic plugin)
+descriptor:
+  source: /v
+  wrap: { key: data }
+input:  { v: 7 }
+value:  { data: 7 }
+```
 
 #### `pointer` (within a plugin's options)
 **Core · GET plugins · value: JSON Pointer string.**
 When present in a plugin's options object, the plugin's result is narrowed by
-this pointer before the pipeline continues. *Cases: `08-extensions`.*
+this pointer before the pipeline continues. *Cases: `08-extensions`,
+`14-keyword-examples`.*
+
+```yaml
+# example 6.8-2
+descriptor:
+  source: /v
+  wrap: { key: data, pointer: /data }
+input:  { v: 7 }
+value:  7
+```
 
 ### 6.9 Diagnostics
 
@@ -1196,10 +1454,10 @@ case yet.
 | EXT-7       | §7.6    | *(meta-requirement on suites themselves)*                       | —         |
 | EXT-8       | §7.6    | *(gap — behavioral guidance)*                                   | —         |
 | PTR-1       | §4.1    | `01-source-reads`, `02-combinators`, `04-validation`            | —         |
-| PTR-2       | §4.2    | *(gap)*                                                         | —         |
+| PTR-2       | §4.2    | `14-keyword-examples`                                           | —         |
 | PTR-3       | §4.3    | `05-mapping-core` (language map)                                | —         |
 | PTR-4       | §4.3    | `09-probes-deviations` (F4)                                     | A3        |
-| PTR-5       | §4.3    | *(gap)*                                                         | —         |
+| PTR-5       | §4.3    | `14-keyword-examples`                                           | —         |
 | PTR-6       | §4.3    | `09-probes-deviations` (F4)                                     | A3        |
 | PTR-7       | §4.3    | `13-audit-probes` (write-through)                               | —         |
 | PTR-8       | §4.4    | `01-source-reads`, `10-catalog-gaps`                            | —         |
