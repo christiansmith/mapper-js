@@ -55,9 +55,9 @@ with the reference implementation is explicitly required.
 
 ### 1.3 Status of this document
 
-Sections 1–7 and Appendices A–B are complete in this draft. Sections 8–9
-(algorithmic characteristics, worked examples) are outlined and reserved for
-the next revisions of this draft.
+All sections (1–9) and appendices are complete in this draft, which covers
+the full behavior of the reference implementation. Revision is expected as
+deviations are resolved and open questions (Appendix C) are decided.
 
 ## 2. Conformance
 
@@ -831,14 +831,195 @@ are safe.
 
 ## 8. Algorithmic characteristics
 
-*Reserved — next revision.* Complexity in terms of document size, input
-size, and fan-out; data-structure evolution; concurrency width; optimization
-signposts.
+This section characterizes required cost and shape consequences of the
+semantics in §5. Everything here follows from observable behavior;
+implementations MAY do better wherever the semantics permit (signposts
+below).
+
+### 8.1 Cost model
+
+Let **|D|** be the number of pairings in the (inheritance-resolved) document,
+**depth(p)** the token length of a pointer, and **fan-out** the element count
+wherever `each`, variant lists, or `first`/`last`/`all` multiply work.
+
+- **Evaluation units.** The work of an invocation is the number of
+  (descriptor, scope) evaluations: every pairing evaluates once per scope it
+  is applied to, so an `each` over *n* elements evaluates its nested pairings
+  *n* times. Total time is
+  **O(Σ evaluations × per-evaluation cost)** — linear in document size and in
+  the portions of the input actually addressed, with nesting multiplying by
+  fan-out at each level. The evaluator never scans unaddressed input: cost is
+  driven by the *document*, not the input's total size (target-wise descent,
+  §5.1).
+- **Per-evaluation cost.** A pointer read/write is O(depth). An array
+  splice-insert is O(array length) (§4.3). Validators are O(1) except `enum`
+  (O(members)), `pattern` (regular-expression cost over the string), and type
+  checks on aggregates (O(1) — type inspection only, no traversal). `find` is
+  O(members × eq-entries). `concat` is O(elements). `template` adds one
+  nested evaluation plus O(template length).
+- **Registry operations.** `$extend` resolution is performed at registration
+  (§3.5): evaluation-time `deref` is a single map lookup.
+- **Short-circuiting** (§5.8) bounds wasted work after the first error to the
+  remainder of the pairing in flight; concurrent fan-out branches already
+  started MAY run to completion (their writes land in discarded targets).
+
+### 8.2 Space and data-structure evolution
+
+An invocation holds: the input (never copied — reads alias it), the output
+under construction, one **context per active nesting level** (each O(1):
+bindings and two path strings — shared fields are references, §5.2), and the
+error accumulator. Peak context count equals the nesting depth of the
+document times the concurrent fan-out width. Nested targets are built as
+fresh objects and connected to their parents by a single write — there is no
+merge step, so no intermediate copies (§5.1).
+
+The evolution of the two mutable structures — target accretion (pairing by
+pairing, in document order) and context derivation (rebind `source`/`target`/
+`paths`, share the rest) — is illustrated in
+[`context-evolution.svg`](docs/figures/context-evolution.svg).
+
+### 8.3 Concurrency width
+
+Sequencing is fixed by §5.7: pairings are strictly sequential; fan-out within
+a pairing is unordered. The maximum concurrency width at any moment is the
+product of the fan-out sizes along one descent path (an `each` of *n*
+elements whose element mapping issues an `all` of *k* plugin calls may have
+*n × k* operations in flight). Since plugins are the only asynchronous
+stage, effective parallelism is plugin parallelism — pure documents gain
+nothing from concurrency, and implementations MAY evaluate them entirely
+synchronously.
+
+### 8.4 Optimization signposts
+
+Permitted by the semantics, required by nothing:
+
+- **Document compilation.** Parse pointers, resolve inheritance and
+  references, and fix pairing plans once per document, then apply the
+  compiled plan to many inputs — the natural server-mode optimization.
+- **Independent-pairing parallelism.** Pairings that provably never read
+  `target`/`output` (statically visible in the document) may run
+  concurrently (§5.7).
+- **Iterative traversal.** The recursive descent of §5 can be driven by an
+  explicit work stack; nothing observable depends on host-stack recursion.
+- **Structural sharing.** Values passed through unchanged may alias the
+  input; only written targets need be fresh.
 
 ## 9. Worked examples
 
-*Reserved — next revision.* End-to-end examples at meaningful granularity,
-including a flow-style document composing plugins.
+Both examples are executable: they appear verbatim as cases in
+`test/cases/12-worked-examples.yaml`, evaluated against the reference
+implementation with the deterministic extensions of `test/extensions.js`.
+
+### 9.1 Reshaping: bibliographic record → citation
+
+A pure transformation exercising nested targets, `each`, `find`, combinators,
+validation, and finalization.
+
+**Document:**
+
+```yaml
+mapping:
+  /citation/title: /title
+  /citation/doi:
+    source: /ids
+    find:
+      eq: { idType: doi }
+      pointer: /value
+    required: true
+  /citation/year: { first: ['/issued/year', '/created/year'], as: number }
+  /citation/authors:
+    source: /contributors
+    each:
+      /family: /surname
+      /given: { source: /forename, default: '' }
+  /citation/source: { constant: 'import' }
+```
+
+**Input:**
+
+```yaml
+title: On Mapping
+ids:
+  - { idType: issn, value: '2049-3630' }
+  - { idType: doi, value: '10.1000/xyz123' }
+issued: { year: '2024' }
+contributors:
+  - { surname: Hopper, forename: Grace }
+  - { surname: Noether }
+```
+
+**Result** (envelope):
+
+```yaml
+citation:
+  title: On Mapping
+  doi: '10.1000/xyz123'
+  year: 2024
+  authors:
+    - { family: Hopper, given: Grace }
+    - { family: Noether, given: '' }
+  source: import
+valid: true
+errors: []
+```
+
+Walkthrough: five pairings evaluate in order. The `doi` pairing locates
+`/ids`, `find` selects the member whose `idType` equals `doi` and narrows to
+`/value`; `required` validates the outcome. The `year` pairing shows the
+pipeline order doing work: `first` locates a string, and `as: number`
+finalizes it. The `authors` pairing fans out over `/contributors` — the two
+element mappings may evaluate concurrently; results reassemble in element
+order — and the `given` default fills the missing forename. Deep target
+pointers create the `citation` object on first write (§4.3).
+
+### 9.2 Flow: a lookup-and-respond document
+
+A flow-style document: sequential pairings accumulate request state in the
+output, a plugin performs the effect, and later pairings shape the response —
+the whole route handler is data.
+
+**Document:**
+
+```yaml
+mapping:
+  /params/table: { constant: people }
+  /params/id: /request/id
+  /row:
+    output: /params
+    db: { pointer: /0 }
+  /response:
+    output: /
+    switch:
+      output: /row/role
+      cases:
+        admin: { source: /, mapping: { /name: /row/name, /admin: { constant: true } } }
+        default: { source: /, mapping: { /name: /row/name } }
+```
+
+**Input:** `{ request: { id: '42' } }` — with a `db` plugin that looks up
+rows by `params` (the test extension returns
+`{ id: '42', name: Ada, role: admin }` for `people/42`).
+
+**Result** (envelope):
+
+```yaml
+params: { table: people, id: '42' }
+row: { id: '42', name: Ada, role: admin }
+response: { name: Ada, admin: true }
+valid: true
+errors: []
+```
+
+Walkthrough: the first two pairings *write the plugin's parameters into the
+output*; the third reads them back (`output: /params`) as the pipeline value
+— the value-as-parameters pattern of §7.4 — and the `db` plugin performs the
+lookup, narrowed by `pointer`. The final pairing follows the idiom of the
+A10 note (Appendix A): its locate keyword `output: /` pairs with
+`switch.output`, so the branch key comes from the accumulated output under
+both the specified semantics and the reference implementation's actual
+behavior; the selected case then maps the output into the response shape.
+Pairing order is the program: reordering these pairings changes (or breaks)
+the flow (§3.2).
 
 ## Appendix A. Known deviations of the reference implementation (normative)
 
@@ -900,8 +1081,14 @@ Recorded for future revisions, not requirements of this draft:
   traversal as alternatives to target-wise descent.
 - **Alternative addressing** — XPath-style selection as an alternative to
   JSON Pointer reads.
-- **Structured extension errors** — capturing plugin/transformer failures in
-  the error model (§5.8).
+- **Error-model rework** — the present model (§5.8) is captured as-is, and
+  is known to need substantial design work. Flagged areas: structured capture
+  of extension failures (today host exceptions, §7.4); error provenance
+  (error objects carry the read keyword but not the full source/target
+  paths); short-circuit granularity (all-or-nothing today — no partial
+  results or error-tolerant modes); mapping errors to responses (letting a
+  document declare how its own failures become output); and separating
+  diagnostics from validation.
 - **Diagnostic mode** — surfacing unknown transformer/initializer names,
   unreachable plugin registrations, and invalid pointer strings.
 - **Extraction candidates** — `stdout` and `regexp_i` are deployment-shaped
