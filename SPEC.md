@@ -44,8 +44,13 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174]
 when, and only when, they appear in all capitals.
 
-Pseudocode in this document is normative. Typeset renderings of the same
-algorithms are provided under `docs/figures/`.
+**Pseudocode conventions.** Pseudocode in this document is normative; typeset
+renderings of the same algorithms are provided under `docs/figures/`. Within
+pseudocode: `←` binds a name; SMALL-CAPS names (MAP, GET, SHIFT, READ, NEST,
+DEREF, SET) are the operations defined in §5; `a ?? b` selects the first
+*defined* operand; **parallel** marks iteration whose items MAY be evaluated
+concurrently with results kept in item order (§5.7); `case … of` selects the
+first matching arm; `#` begins a comment.
 
 **Requirement identifiers.** Individually testable normative requirements
 carry bracketed identifiers — **[MAP-1]**, **[PTR-3]**, **[KW-as-1]**, … —
@@ -69,6 +74,21 @@ with the reference implementation is explicitly required.
 All sections (1–9) and appendices are complete in this draft, which covers
 the full behavior of the reference implementation. Revision is expected as
 deviations are resolved and open questions (Appendix C) are decided.
+
+### 1.4 How to read this document
+
+Three paths through this specification:
+
+- **Implementers** (building an evaluator): §3 data model → §4 pointers →
+  §5 evaluation model → §6 keywords, with Appendix A open beside the
+  reference implementation.
+- **Porters and conformance testers**: §2 conformance, then Appendix B and
+  the test suite; Appendix D maps every requirement to its covering cases;
+  §8 explains what may and may not be optimized.
+- **Mapping-document authors**: §6 (each keyword carries a runnable example)
+  and the worked examples of §9 are for you, alongside
+  [`docs/quick-reference.md`](docs/quick-reference.md); a tutorial-style user
+  guide is planned as a separate document.
 
 ## 2. Conformance
 
@@ -110,6 +130,20 @@ non-probe cases are conformance cases for any implementation, subject to the
 case format documented in `test/cases/README.md`.
 
 ## 3. Data model and terminology
+
+Terms used throughout, each defined once at the referenced section and used
+verbatim everywhere else:
+
+| Term                     | Meaning                                                           | Defined    |
+| ------------------------ | ----------------------------------------------------------------- | ---------- |
+| *pipeline value*         | the value flowing through GET's stages                            | §5.5       |
+| *scope*                  | what a context binds for reading (`source`) or writing (`target`) | §5.2       |
+| *pairing*                | one `targetPointer ← descriptor` entry of a mapping               | §3.4       |
+| *structural descriptor*  | a descriptor carrying `mapping`/`each`                            | §3.3       |
+| *branch key*             | the value `switch` reads to select a case                         | §6.5       |
+| *envelope*               | the invocation result `{ ...output, valid, errors }`              | §5.3       |
+| *registry*               | the named-mapping store; also the three extension registries      | §3.5, §3.6 |
+| *characterization probe* | a `deviation:`-tagged case pinning actual behavior                | §2.3       |
 
 ### 3.1 Values
 
@@ -471,7 +505,7 @@ Requirements and notes:
   `default` still fails `required`); `as` coerces last.
 - **[GET-2]** The `switch` keywords name the **scope the branch key is read
   from** — they are not aliases: `switch.source` reads the branch key from
-  the value being switched on; `switch.input` reads it from the root input;
+  the pipeline value; `switch.input` reads it from the root input;
   `switch.output` reads it from the root output. This allows a document to switch on context
   the switched value does not itself carry. When more than one is present,
   `source` takes precedence, then `input`, then `output`. Whichever scope
@@ -482,7 +516,7 @@ Requirements and notes:
   against the *enclosing* context (the value override applies only to
   mapping-bearing cases). A falsy branch key leaves the value unswitched.
 - Plugin daisy-chaining: every descriptor key matching a registered plugin
-  fires, in document order, each replacing the value — this is the wiring
+  fires, in document order, each replacing the pipeline value — this is the wiring
   mechanism of flow-style documents.
 - **[GET-3]** Validators MUST treat undefined uniformly: absent values are
   validated only by `required`, and validators check only values of their own
@@ -669,7 +703,7 @@ result: { person: { name: Ada } }
 #### `each`
 **Core · MAP · value: as `mapping`.**
 Exact alias of `mapping`; when both are present, `mapping` takes precedence.
-Idiomatically used when the scope value is an array: each element is mapped
+Idiomatically used when the pipeline value is an array: each element is mapped
 in parallel with the element as source and its index appended to the source
 path (§5.4, §5.7).
 
@@ -924,7 +958,7 @@ value:  b
 
 #### `default`
 **Core · GET finalize · value: any JSON value.**
-Replaces the value only when it is undefined, **after** validation — an
+Replaces the pipeline value only when it is undefined, **after** validation — an
 absent-but-defaulted value still fails `required`. *Cases: `03-finalize`,
 `14-keyword-examples`.*
 
@@ -950,7 +984,7 @@ value:      '/abc/i'
 
 #### `as`
 **Core · GET finalize · value: `"string" | "number" | "boolean" | "json"`.**
-Coerces the final value: string conversion, numeric conversion, boolean
+Coerces the pipeline value at the finalize stage: string conversion, numeric conversion, boolean
 conversion, or JSON serialization. Applied to undefined it MUST yield
 undefined (*Deviation A4*). **[KW-as-1]** A numeric coercion that does not
 produce a finite number (e.g. `as: number` of a non-numeric string) is a
