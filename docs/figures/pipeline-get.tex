@@ -1,23 +1,32 @@
 % GET pipeline — keyword-to-stage assignment (SPEC.md §5.5).
 % Companion to algorithm-get: the stages in order, with the keywords each
 % stage consumes. Stage order is normative.
-\documentclass[border=6pt]{standalone}
+\documentclass[border=8pt]{standalone}
 \usepackage[T1]{fontenc}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta}
 \begin{document}
 \begin{tikzpicture}[
   font=\sffamily,
-  stage/.style={draw, rounded corners=2pt, minimum height=8mm, minimum width=24mm, align=center, font=\sffamily\bfseries\small},
-  kw/.style={align=center, font=\sffamily\footnotesize, text=black!70},
-  flow/.style={-{Stealth[length=2.5mm]}, thick}
+  stage/.style={draw=black!60, fill=black!4, rounded corners=3pt, minimum height=10mm,
+                minimum width=32mm, align=center, font=\sffamily\bfseries},
+  num/.style={font=\sffamily\scriptsize, text=black!50},
+  kw/.style={align=center, font=\sffamily\small, text=black!75, text width=32mm},
+  flow/.style={-{Stealth[length=3mm]}, thick, black!60}
 ]
-  \node[stage] (locate) {1\\locate};
-  \node[stage, right=7mm of locate] (dispatch) {2\\dispatch};
-  \node[stage, right=7mm of dispatch] (plugins) {3\\plugins};
-  \node[stage, right=7mm of plugins] (shape) {4\\shape};
-  \node[stage, right=7mm of shape] (validate) {5\\validate};
-  \node[stage, right=7mm of validate] (finalize) {6\\finalize};
+  \node[stage] (locate) {locate};
+  \node[stage, right=10mm of locate] (dispatch) {dispatch};
+  \node[stage, right=10mm of dispatch] (plugins) {plugins};
+  \node[stage, right=10mm of plugins] (shape) {shape};
+  \node[stage, right=10mm of shape] (validate) {validate};
+  \node[stage, right=10mm of validate] (finalize) {finalize};
+
+  \node[num, above=1mm of locate] {1};
+  \node[num, above=1mm of dispatch] {2};
+  \node[num, above=1mm of plugins] {3};
+  \node[num, above=1mm of shape] {4};
+  \node[num, above=1mm of validate] {5};
+  \node[num, above=1mm of finalize] {6};
 
   \draw[flow] (locate) -- (dispatch);
   \draw[flow] (dispatch) -- (plugins);
@@ -25,11 +34,11 @@
   \draw[flow] (shape) -- (validate);
   \draw[flow] (validate) -- (finalize);
 
-  \node[kw, below=3mm of locate] {source · target\\input · output\\\texttt{/ptr} · \texttt{../rel}\\first · last · all};
-  \node[kw, below=3mm of dispatch] {switch\\(source | input\\| output)};
-  \node[kw, below=3mm of plugins] {any registered\\plugin key\\(async, chained)};
-  \node[kw, below=3mm of shape] {find · concat\\init · constant\\random · template\\transform};
-  \node[kw, below=3mm of validate] {type · min/max\\multipleOf · length\\enum · pattern\\required};
-  \node[kw, below=3mm of finalize] {default\\regexp\_i\\as};
+  \node[kw, below=4mm of locate] {source\\target\\input · output\\\texttt{/pointer}\\\texttt{../relative}\\first · last · all};
+  \node[kw, below=4mm of dispatch] {switch\\{\footnotesize(branch key from\\source, input,\\or output scope)}};
+  \node[kw, below=4mm of plugins] {\emph{any registered}\\\emph{plugin key}\\{\footnotesize(async, chained\\in document order)}};
+  \node[kw, below=4mm of shape] {find\\concat\\init · constant\\random\\template\\transform};
+  \node[kw, below=4mm of validate] {type\\minimum · maximum\\multipleOf\\minLength · maxLength\\enum · pattern\\required};
+  \node[kw, below=4mm of finalize] {default\\regexp\_i\\as};
 \end{tikzpicture}
 \end{document}

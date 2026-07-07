@@ -55,9 +55,9 @@ with the reference implementation is explicitly required.
 
 ### 1.3 Status of this document
 
-Sections 1–5 and Appendices A–B are complete in this draft. Sections 6–9
-(keyword catalog, extension interfaces, algorithmic characteristics, worked
-examples) are outlined and reserved for the next revisions of this draft.
+Sections 1–6 and Appendices A–B are complete in this draft. Sections 7–9
+(extension interfaces, algorithmic characteristics, worked examples) are
+outlined and reserved for the next revisions of this draft.
 
 ## 2. Conformance
 
@@ -503,9 +503,229 @@ define structured extension-error capture.
 
 ## 6. Keywords
 
-*Reserved — next revision.* One normative section per keyword with its tier,
-argument grammar, pipeline stage, error shapes, and test-suite cross
-references. Tier assignments are fixed in §2.2.
+One section per keyword. Each entry states the keyword's **tier** (§2.2), the
+**stage** at which it acts (§5.4 MAP, §5.5 GET, or registration §3.5/§5.3),
+its **value grammar**, and its behavior. *Cases* names the suite file(s) in
+`test/cases/` exercising the keyword. Keywords not listed here are not part of
+this specification; implementations MUST NOT assign behavior to unknown
+descriptor keys other than registered plugin names (§6.8).
+
+### 6.1 Reading
+
+#### `source`
+**Core · GET locate · value: JSON Pointer string.**
+Reads from the current source scope (§5.2). On a structural descriptor,
+`source` additionally rebinds the source scope and extends the source *path*
+for descendants (§5.6 SHIFT) — reading and scoping are the same keyword.
+An absent location reads as undefined. *Cases: `01-source-reads`.*
+
+#### `target`
+**Core · GET locate · value: JSON Pointer string.**
+Reads from the current target scope — the object under construction at this
+nesting level. Because pairings evaluate in document order (§3.2), a `target`
+read observes only writes made by earlier pairings. On a structural
+descriptor, `target` rebinds the target scope/path. *Cases:
+`01-source-reads`.*
+
+#### `input`
+**Core · GET locate · value: JSON Pointer string.**
+Reads from the root input, regardless of the current scope. *Cases:
+`01-source-reads`.*
+
+#### `output`
+**Core · GET locate · value: JSON Pointer string.**
+Reads from the root output (the top-level target), regardless of the current
+scope. With `output: /` the whole output-so-far becomes the value — the
+common way to post-process accumulated results. *Cases: `01-source-reads`.*
+
+String-form descriptors (pointer strings, relative references, registry
+names) are specified in §3.3 and §4; they are equivalent to the corresponding
+keyword forms.
+
+### 6.2 Structure
+
+#### `mapping`
+**Core · MAP · value: ordered map of pairings, or a registry reference.**
+Declares the pairings this descriptor builds (§5.4). As a nested keyword it
+opens a child scope with a fresh target; the produced object is the pairing's
+value. The value may be `{ "$ref": id }` or (equivalently) a registry
+reference resolved at evaluation time. *Cases: `05-mapping-core`,
+`06-references`.*
+
+#### `each`
+**Core · MAP · value: as `mapping`.**
+Exact alias of `mapping`; when both are present, `mapping` takes precedence.
+Idiomatically used when the scope value is an array: each element is mapped
+in parallel with the element as source and its index appended to the source
+path (§5.4, §5.7). *Cases: `05-mapping-core`, `06-references`,
+`08-extensions`.*
+
+### 6.3 Registry
+
+#### `$id`
+**Core · registration · value: string.**
+Names a mapping in the registry (§3.5). Re-registration replaces.
+
+#### `$ref`
+**Core · evaluation-time resolution · value: string.**
+Substitutes the registered mapping for the descriptor carrying it. Unknown
+ids are diagnostics. *Deviation A7.* *Cases: `06-references`,
+`09-probes-deviations` (F11).*
+
+#### `$extend`
+**Core · registration · value: string.**
+Single inheritance, resolved transitively when mappings are registered:
+ancestor pairings first in order; same-key pairings overridden by the
+descendant in the ancestor's position; new descendant pairings appended.
+Unknown ids MUST raise an error at registration. *Cases: `06-references`,
+`10-catalog-gaps`.*
+
+#### `description`
+**Core · inert · value: string.**
+Documentation; carried through inheritance merges; no runtime effect.
+
+### 6.4 Combinators
+
+#### `first`, `last`, `all`
+**Core · GET locate · value: array of descriptors.**
+Evaluate every listed descriptor (concurrently permitted, §5.7) and select:
+`first` — the first defined result in list order; `last` — the last defined
+result; `all` — every defined result, in list order. Contrast with variant
+arrays (§5.4), whose selection is currently truthiness-based in the reference
+implementation (*Deviation A5*). *Cases: `02-combinators`,
+`09-probes-deviations` (F10).*
+
+#### `concat`
+**Core · GET shape · value: `true`.**
+When the pipeline value is an array, flattens it one level (an array of
+arrays becomes one array). Non-array values pass through unchanged. Usually
+paired with `all`. *Cases: `02-combinators`, `10-catalog-gaps`.*
+
+### 6.5 Dispatch and selection
+
+#### `switch`
+**Core · GET dispatch · value: `{ source | input | output: pointer, cases: map }`.**
+Selects a case descriptor by reading a **branch key**: `switch.source` reads
+it from the pipeline value; `switch.input` from the root input;
+`switch.output` from the root output (precedence `source` > `input` >
+`output`). *Deviation A10 — see also the note in Appendix A.* The matched
+case (or `cases.default`; a `cases` map with only `default` is a valid
+"always" form) is evaluated with the *pipeline value* as its source when it
+carries a `mapping`; a plain-pointer case evaluates against the enclosing
+context (open question, Appendix C). No matching case and no `default`
+yields undefined; a falsy branch key leaves the value unswitched. *Cases:
+`07-switch`, `09-probes-deviations` (F12), `10-catalog-gaps`.*
+
+#### `find`
+**Core · GET shape · value: `{ eq: map, pointer?: pointer }`.**
+Selects the first member of the pipeline value (a non-array value is treated
+as a one-member list) whose properties strictly equal every `eq` entry
+(shallow comparison). `pointer` then narrows the selected member. No match
+yields undefined. *Cases: `02-combinators`, `10-catalog-gaps`.*
+
+### 6.6 Value pipeline
+
+#### `init`
+**Core · GET shape · value: string (initializer name).**
+Applies the named initializer `fn(value, context)` (§3.6). Unknown names are
+skipped silently in the reference implementation; a diagnostic mode is
+RECOMMENDED. *Cases: `08-extensions`, `10-catalog-gaps`.*
+
+#### `constant`
+**Core · GET shape · value: any JSON value.**
+Replaces the pipeline value unconditionally (unlike `default`). Anything the
+locate stage read is discarded. *Cases: `03-finalize`.*
+
+#### `random`, `unique`
+**Experimental · GET shape · value: positive integer / `true`.**
+Selects `random` members of an array value at random (`random: 1` yields the
+member itself, larger counts an array). `unique` requires distinct members
+and MUST terminate (*Deviation A9*). Nondeterministic by design — conformance
+cases use shape assertions. *Cases: `09-probes-deviations` (F6).*
+
+#### `template`
+**Core · GET shape · value: string with `{{param}}` placeholders (requires `mapping`).**
+When the pipeline value is an object, applies the descriptor's `mapping` to
+it and substitutes each `{{param}}` with the mapped result's top-level
+`param` property; placeholders without a value render as the empty string.
+Non-object values pass through unchanged. *Cases: `08-extensions`,
+`10-catalog-gaps`.*
+
+#### `transform`
+**Core · GET shape · value: transformer name, or ordered array of steps.**
+Applies named transformers (§3.6) in order. A string step invokes
+`fn(value, context)`; an object step invokes each of its keys' transformers
+(document order) as `fn(value, context, step)` — the step object itself is
+the options argument. Unknown names are skipped silently in the reference
+implementation; a diagnostic mode is RECOMMENDED. *Cases: `08-extensions`.*
+
+#### `default`
+**Core · GET finalize · value: any JSON value.**
+Replaces the value only when it is undefined, **after** validation — an
+absent-but-defaulted value still fails `required`. *Cases: `03-finalize`.*
+
+#### `regexp_i`
+**Experimental · GET finalize · value: `true`.**
+Wraps the value as the string `/value/i` (a case-insensitive regular
+expression literal for downstream query languages). *Cases: `03-finalize`.*
+
+#### `as`
+**Core · GET finalize · value: `"string" | "number" | "boolean" | "json"`.**
+Coerces the final value: string conversion, numeric conversion, boolean
+conversion, or JSON serialization. Applied to undefined it MUST yield
+undefined (*Deviation A4*). A numeric coercion that does not produce a finite
+number (e.g. `as: number` of a non-numeric string) is a diagnostic;
+implementations MUST NOT emit non-JSON numbers (*the reference implementation
+produces NaN, which serializes as `null` — Deviation A4*). *Cases:
+`03-finalize`, `09-probes-deviations` (F5), `10-catalog-gaps`.*
+
+### 6.7 Validation
+
+All validation keywords act at the GET validate stage (§5.5): each appends an
+**error object** to the shared accumulator and passes the value through
+unchanged. Except for `required`, validators MUST skip undefined values
+(*Deviation A4*). The error object carries the failing keyword and operand,
+the offending `value`, provenance (the descriptor's read keyword, e.g.
+`source`), and a human-readable `message`:
+
+```json
+{ "source": "/a", "value": 3, "maximum": 2, "message": "cannot be greater than 2" }
+```
+
+Exact shapes per keyword are pinned by `04-validation`.
+
+| Keyword | Value | Constraint checked |
+|---|---|---|
+| `type` | `"array" \| "boolean" \| "integer" \| "null" \| "number" \| "object" \| "string"` | the value's JSON type; `integer` accepts integral numbers |
+| `minimum` / `maximum` | number | numeric lower/upper bound (inclusive); zero-valued bounds are honored (*Deviation A4*) |
+| `multipleOf` | number | divisibility, decimal-aware |
+| `minLength` / `maxLength` | non-negative integer | string length bounds |
+| `enum` | array | membership (strict equality) |
+| `pattern` | regular-expression string | match anywhere in a string value; non-strings skipped |
+| `required` | boolean | when `true`, an undefined value is an error (checked before `default`) |
+
+### 6.8 Plugins
+
+#### *plugin keys*
+**Core · GET plugins · value: options object (plugin-defined).**
+Any descriptor key matching a registered plugin name invokes
+`await plugin(options, value, context)`, replacing the pipeline value. All
+matching keys fire, in document order — plugins chain (§3.2, §5.5). This is
+the asynchrony and effect boundary (§3.6) and the wiring mechanism of
+flow-style documents. *Cases: `08-extensions`, `09-probes-deviations` (F1).*
+
+#### `pointer` (within a plugin's options)
+**Core · GET plugins · value: JSON Pointer string.**
+When present in a plugin's options object, the plugin's result is narrowed by
+this pointer before the pipeline continues. *Cases: `08-extensions`.*
+
+### 6.9 Diagnostics
+
+#### `stdout`
+**Experimental · MAP, after pairings · value: `true` or JSON Pointer string.**
+Writes the completed target (or the value at the pointer, JSON-serialized) to
+the implementation's diagnostic output channel. MUST NOT affect the result.
+*Cases: `09-probes-deviations` (F8).*
 
 ## 7. Extension interfaces
 
@@ -545,6 +765,15 @@ the same change.
 | **A9** | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                        | Loops indefinitely when `random` exceeds the number of distinct members.                                         | *(not probed — nonterminating)*  |
 | **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5). | All three read the branch key from the switched value. | `F12-switch-scope` |
 
+**Note on A10.** Observed mapping documents pair the
+descriptor's locate keyword with the matching switch scope — e.g.
+`output: /` with `switch.output`, or a root-input source with `switch.input`.
+Under that idiom the switched value *is* the named scope, so the specified and
+actual behaviors coincide; they diverge only when the switched value differs
+from the named scope (the construction the `F12` probes use). Adopting the
+specified semantics therefore does not change the behavior of documents
+following the idiom.
+
 ## Appendix B. Test suite and case format (informative)
 
 The YAML case files under `test/cases/` are both the reference
@@ -560,6 +789,11 @@ deterministic extension functions cases rely on are described in
 ## Appendix C. Design considerations (informative)
 
 Recorded for future revisions, not requirements of this draft:
+
+- **Open question — plain-pointer case scope (§5.5):** a switch case without
+  a `mapping` is evaluated against the enclosing context rather than the
+  switched value. Whether this is intended or a deviation is undecided; no
+  observed document exercises the distinction.
 
 - **Result envelope separation** — moving `valid`/`errors` out of the output
   key space (§5.3).
