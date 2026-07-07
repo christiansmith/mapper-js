@@ -1,0 +1,273 @@
+# The inline examples of SPEC.md §6, verbatim. Each case description names
+# its example number. If these cases change, the §6 example blocks must change
+# in the same commit, and vice versa. Also carries the PTR-2/PTR-5 coverage
+# cases identified by the Appendix D traceability matrix.
+suite: keyword examples
+level: get
+tests:
+  - description: '6.1-1 source'
+    tier: core
+    descriptor: { source: /user/name }
+    input: { user: { name: Ada } }
+    expected: { value: Ada }
+
+  - description: '6.1-2 target'
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /id: { constant: 7 }
+        /copy: { target: /id }
+    input: {}
+    expected:
+      result: { id: 7, copy: 7 }
+
+  - description: '6.1-3 input reads from the root regardless of scope'
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /out:
+          source: /nested
+          mapping:
+            /fromScope: /val
+            /fromRoot: { input: /rootVal }
+    input:
+      rootVal: R
+      nested: { val: V }
+    expected:
+      result:
+        out: { fromScope: V, fromRoot: R }
+
+  - description: '6.1-4 output'
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /a: { constant: 1 }
+        /b: { output: /a }
+    input: {}
+    expected:
+      result: { a: 1, b: 1 }
+
+  - description: '6.2-1 mapping'
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /person/name: /n
+    input: { n: Ada }
+    expected:
+      result:
+        person: { name: Ada }
+
+  - description: '6.2-2 each'
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /out:
+          source: /items
+          each:
+            /v: /n
+    input:
+      items: [{ n: 1 }, { n: 2 }]
+    expected:
+      result:
+        out: [{ v: 1 }, { v: 2 }]
+
+  - description: '6.3-1 $ref'
+    tier: core
+    level: map
+    descriptor: { $ref: 'mapping:Kv' }
+    mappings:
+      'mapping:Kv':
+        $id: 'mapping:Kv'
+        mapping:
+          /key: /k
+          /value: /v
+    input: { k: a, v: 1 }
+    expected:
+      result: { key: a, value: 1 }
+
+  - description: '6.3-2 $extend'
+    tier: core
+    level: mapper
+    id: 'mapping:Child'
+    mappings:
+      'mapping:Parent':
+        $id: 'mapping:Parent'
+        mapping:
+          /a: /a
+      'mapping:Child':
+        $id: 'mapping:Child'
+        $extend: 'mapping:Parent'
+        mapping:
+          /b: /b
+    input: { a: 1, b: 2 }
+    expected:
+      result: { a: 1, b: 2, valid: true, errors: [] }
+
+  - description: '6.4-1 first'
+    tier: core
+    descriptor:
+      first: ['/missing', '/b']
+    input: { b: 2 }
+    expected: { value: 2 }
+
+  - description: '6.4-2 last'
+    tier: core
+    descriptor:
+      last: ['/a', '/missing']
+    input: { a: 1 }
+    expected: { value: 1 }
+
+  - description: '6.4-3 all'
+    tier: core
+    descriptor:
+      all: ['/a', '/b']
+    input: { a: 1, b: 2 }
+    expected:
+      value: [1, 2]
+
+  - description: '6.4-4 concat'
+    tier: core
+    descriptor:
+      all: ['/a', '/b']
+      concat: true
+    input:
+      a: [1, 2]
+      b: [3]
+    expected:
+      value: [1, 2, 3]
+
+  - description: '6.5-1 switch'
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /x:
+          source: /
+          switch:
+            source: /kind
+            cases:
+              a: /valA
+              b: /valB
+    input: { kind: b, valA: 1, valB: 2 }
+    expected:
+      result: { x: 2 }
+
+  - description: '6.5-2 find'
+    tier: core
+    descriptor:
+      source: /ids
+      find:
+        eq: { t: doi }
+        pointer: /v
+    input:
+      ids:
+        - { t: issn, v: '2049-3630' }
+        - { t: doi, v: '10.1000/x' }
+    expected: { value: '10.1000/x' }
+
+  - description: '6.6-1 init'
+    tier: core
+    descriptor: { init: uuid }
+    input: {}
+    expected: { value: 'urn:uuid:00000000-0000-4000-8000-000000000000' }
+
+  - description: '6.6-2 constant'
+    tier: core
+    descriptor: { source: /a, constant: fixed }
+    input: { a: 1 }
+    expected: { value: fixed }
+
+  - description: '6.6-3 template'
+    tier: core
+    descriptor:
+      source: /p
+      template: 'Hi {{n}}!'
+      mapping:
+        /n: /first
+    input:
+      p: { first: Ada }
+    expected: { value: 'Hi Ada!' }
+
+  - description: '6.6-4 transform'
+    tier: core
+    descriptor:
+      source: /s
+      transform:
+        - { split: ', ' }
+        - last
+    input: { s: 'a, b' }
+    expected: { value: b }
+
+  - description: '6.6-5 default'
+    tier: core
+    descriptor: { source: /missing, default: fallback }
+    input: {}
+    expected: { value: fallback }
+
+  - description: '6.6-6 regexp_i'
+    tier: experimental
+    descriptor: { source: /s, regexp_i: true }
+    input: { s: abc }
+    expected: { value: '/abc/i' }
+
+  - description: '6.6-7 as'
+    tier: core
+    descriptor: { source: /n, as: string }
+    input: { n: 7 }
+    expected: { value: '7' }
+
+  - description: '6.7-1 validation accepts'
+    tier: core
+    descriptor: { source: /age, type: number, minimum: 0 }
+    input: { age: 41 }
+    expected: { value: 41, errors: [] }
+
+  - description: '6.7-2 validation rejects'
+    tier: core
+    descriptor: { source: /age, minimum: 21 }
+    input: { age: 16 }
+    expected:
+      value: 16
+      errors:
+        - { source: /age, value: 16, minimum: 21, message: cannot be less than 21 }
+
+  - description: '6.8-1 plugin'
+    tier: core
+    descriptor:
+      source: /v
+      wrap: { key: data }
+    input: { v: 7 }
+    expected:
+      value: { data: 7 }
+
+  - description: '6.8-2 plugin pointer'
+    tier: core
+    descriptor:
+      source: /v
+      wrap: { key: data, pointer: /data }
+    input: { v: 7 }
+    expected: { value: 7 }
+
+  # Coverage gaps from the Appendix D traceability matrix (PTR-2, PTR-5)
+
+  - description: 'PTR-2: URI fragment pointer form'
+    tier: core
+    descriptor: { source: '#/a/b' }
+    input: { a: { b: 5 } }
+    expected: { value: 5 }
+
+  - description: 'PTR-5: the - token appends to an array'
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /list: { constant: [1, 2] }
+        /list/-: { constant: 3 }
+    input: {}
+    expected:
+      result: { list: [1, 2, 3] }
