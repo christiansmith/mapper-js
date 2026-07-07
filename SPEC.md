@@ -46,6 +46,16 @@ when, and only when, they appear in all capitals.
 Pseudocode in this document is normative. Typeset renderings of the same
 algorithms are provided under `docs/figures/`.
 
+**Requirement identifiers.** Individually testable normative requirements
+carry bracketed identifiers — **[MAP-1]**, **[PTR-3]**, **[KW-as-1]**, … —
+prefixed by the area that owns them (`DOC` documents, `REG` registry, `EXT`
+extensions, `PTR` pointers, `CTX` context and invocation, `MAP`/`GET`
+evaluation, `SEQ` concurrency, `ERR` errors, `KW` the keyword catalog in
+general and `KW-<keyword>` keyword-specific). Identifiers are stable: they are never
+renumbered or reused; a retired requirement's identifier stays reserved.
+Each requirement is stated once, at its identifier; other sections refer to
+it. Appendix D maps requirements to test cases and deviations.
+
 **Deviation notes.** This specification defines *intended* behavior. Where the
 reference implementation is known to behave differently, the text carries a
 note — *Deviation An, see Appendix A* — and the actual behavior is pinned by
@@ -110,9 +120,9 @@ location MUST be a no-op (§4.3), and serialized outputs never contain it.
 
 ### 3.2 Ordered maps (portability requirement)
 
-Objects in mapping documents MUST be processed as **ordered maps**: an
-implementation MUST preserve and honor the document order of keys. This is
-load-bearing, not cosmetic:
+**[DOC-1]** Objects in mapping documents MUST be processed as **ordered
+maps**: an implementation MUST preserve and honor the document order of keys.
+This is load-bearing, not cosmetic:
 
 - Pairings within a `mapping` evaluate sequentially in document order (§5.4),
   and later pairings can observe earlier writes through `target`/`output`
@@ -133,7 +143,7 @@ A **descriptor** describes how to produce a value. It takes one of five forms:
 | ----------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Pointer string**            | `"/a/b"`                             | Read from the current source (§4).                                                                                                                                                        |
 | **Relative reference string** | `"../sibling"`                       | Extended tier: resolve against the current source path, read from the root input (§4.4).                                                                                                  |
-| **Name string**               | `"mapping:Person"`                   | A registry reference: the named mapping is substituted (§3.5). A string that is none of the above is invalid — implementations SHOULD raise a diagnostic. *Deviation A6, see Appendix A.* |
+| **Name string**               | `"mapping:Person"`                   | A registry reference: the named mapping is substituted (§3.5). A string that is none of the above is invalid — implementations SHOULD raise a diagnostic **[DOC-2]**. *Deviation A6, see Appendix A.* |
 | **Object**                    | `{ "source": "/a", "as": "number" }` | Keyword descriptor: keywords configure reading, transformation, validation, and structure.                                                                                                |
 | **Array**                     | `["/a", "/b", {"constant": 1}]`      | Variant list: each element is evaluated and one result is selected (§5.4).                                                                                                                |
 
@@ -160,17 +170,19 @@ Named mappings live in a **registry** keyed by `$id`.
 
 - `$id` — names a mapping for reference.
 - `$ref` — substitutes the referenced mapping for the descriptor carrying it.
-  A `$ref` to an unregistered id is an error; implementations SHOULD produce a
-  diagnostic naming the missing id. *Deviation A7, see Appendix A.*
+  **[REG-1]** A `$ref` to an unregistered id is an error; implementations
+  SHOULD produce a diagnostic naming the missing id. *Deviation A7, see
+  Appendix A.*
 - `$extend` — single inheritance between named mappings, resolved when
-  mappings are registered (not at evaluation time). The derived mapping's
-  pairing map is the ancestor chain's pairings merged with the descendant's:
-  ancestor-only pairings first in ancestor order, then every descendant
-  pairing in descendant order — an overridden key evaluates in the
+  mappings are registered (not at evaluation time). **[REG-2]** The derived
+  mapping's pairing map is the ancestor chain's pairings merged with the
+  descendant's: ancestor-only pairings first in ancestor order, then every
+  descendant pairing in descendant order — an overridden key evaluates in the
   **descendant's position**, not the ancestor's. Inheritance merges **only
   the pairing map**: any other descriptor keyword on ancestor or descendant
-  (e.g. `source`, `each`) is discarded by the merge. `$extend` naming an
-  unregistered id MUST raise an error. *Deviation A11, see Appendix A: the
+  (e.g. `source`, `each`) is discarded by the merge. **[REG-3]** `$extend`
+  naming an unregistered id MUST raise an error. *Deviation A11, see
+  Appendix A: the
   reference implementation resolves `$extend` only at evaluator
   construction — mappings registered at evaluation time (§5.3) are neither
   resolved nor checked for unknown ancestors.*
@@ -178,8 +190,8 @@ Named mappings live in a **registry** keyed by `$id`.
 Registration order and re-registration: registering a mapping with an
 existing `$id` replaces it. Note that the reference implementation's
 evaluator API also registers mappings presented inline at evaluation time,
-mutating the evaluator's registry as a side effect (§5.3); implementations
-MUST reproduce the observable resolution behavior.
+mutating the evaluator's registry as a side effect (§5.3); **[REG-4]**
+implementations MUST reproduce the observable resolution behavior.
 
 ### 3.6 Extension points
 
@@ -194,8 +206,8 @@ mapping registry (full interface contract in §7):
   and effect boundary: fetches, queries, and other I/O enter mappings here.
 
 Extension names share the descriptor keyword namespace; a plugin whose name
-collides with a built-in keyword is unreachable. Implementations SHOULD warn
-on such registrations.
+collides with a built-in keyword is unreachable. **[EXT-1]** Implementations
+SHOULD warn on such registrations.
 
 ## 4. JSON Pointer profile
 
@@ -210,53 +222,55 @@ and the pointer `/` both denote the whole document on read. In this profile
 document — empty-string keys are unreachable on read, a departure from
 RFC 6901.
 
-Reading a location whose path does not exist MUST yield undefined (§3.1) —
-never an error. This "recovering read" is what gives `first`/`last`/`all`,
+**[PTR-1]** Reading a location whose path does not exist MUST yield
+undefined (§3.1) — never an error. This "recovering read" is what gives `first`/`last`/`all`,
 `default`, and `required` their meaning.
 
 ### 4.2 URI fragment form
 
-A pointer beginning with `#` is interpreted as an RFC 6901 URI fragment
-identifier: the remainder is percent-decoded and MUST then parse as a JSON
-string pointer.
+**[PTR-2]** A pointer beginning with `#` is interpreted as an RFC 6901 URI
+fragment identifier: the remainder is percent-decoded and MUST then parse as
+a JSON string pointer.
 
 ### 4.3 Write semantics
 
 Writing `value` to `target` at a pointer:
 
-- Writing undefined MUST be a no-op (the location is left untouched; no
-  intermediate containers are created).
-- Missing intermediate containers are created ("recovering write"). The
-  container kind is inferred from the *next* token: a token that is a
-  non-negative integer creates an array; any other token creates an object.
+- **[PTR-3]** Writing undefined MUST be a no-op (the location is left
+  untouched; no intermediate containers are created).
+- **[PTR-4]** Missing intermediate containers are created ("recovering
+  write"). The container kind is inferred from the *next* token: a token that
+  is a non-negative integer creates an array; any other token creates an
+  object.
   *Deviation A3, see Appendix A: the reference implementation creates an
   object for token `"0"` and arrays only for tokens whose integer value is
   non-zero.*
-- The final token `-` on an array appends.
+- **[PTR-5]** The final token `-` on an array appends.
 - A non-negative-integer final token on an array **inserts** at that index
-  (splice semantics), shifting subsequent elements. Writing a non-integer
-  final token on an array location is invalid; implementations SHOULD raise a
-  diagnostic. *Deviation A3: the reference implementation coerces such tokens
-  to index 0 and inserts.*
+  (splice semantics), shifting subsequent elements. **[PTR-6]** Writing a
+  non-integer final token on an array location is invalid; implementations
+  SHOULD raise a diagnostic. *Deviation A3: the reference implementation
+  coerces such tokens to index 0 and inserts.*
 - On objects, the final token sets the property, replacing any existing value.
 - Writing **through** an existing non-container value: the reference
   implementation silently replaces falsy intermediates (`0`, `""`, `false`,
   `null`) with a fresh container, and raises a host error on truthy
-  primitives. Implementations SHOULD diagnose both instead of relying on
-  either behavior. *Cases: `13-audit-probes`.*
+  primitives. **[PTR-7]** Implementations SHOULD diagnose both instead of
+  relying on either behavior. *Cases: `13-audit-probes`.*
 
 ### 4.4 Relative source references (Extended)
 
-A descriptor string that does **not** begin with `/` and contains the
-substring `../` is a **relative reference** (a string merely *ending* in
-`..` does not qualify and falls to the name-string rule of §3.3). It is resolved by path arithmetic against
+**[PTR-8]** A descriptor string that does **not** begin with `/` and
+contains the substring `../` is a **relative reference** (a string merely
+*ending* in `..` does not qualify and falls to the name-string rule of §3.3). It is resolved by path arithmetic against
 the evaluation context's current *source path* (§5.2): segments are appended,
 `.` and empty segments are dropped, and `..` pops one segment. The resolved
 absolute pointer is then read **from the root input** (not from the current
 source value).
 
-A pointer string beginning with `/` MUST NOT contain `..` segments; such
-strings are invalid and implementations SHOULD raise a diagnostic.
+**[PTR-9]** A pointer string beginning with `/` MUST NOT contain `..`
+segments; such strings are invalid and implementations SHOULD raise a
+diagnostic.
 *Deviation A8, see Appendix A: the reference implementation reads them as
 literal token sequences (`".."` as a key), which yields undefined in
 practice.*
@@ -302,14 +316,15 @@ in two classes:
 
 Deriving a child context from a parent ("shifting") resolves, in order:
 explicit overrides (e.g. a new source value for an `each` element), then the
-parent's bindings, then the roots. Overrides apply for **any defined value**,
-including falsy ones. *Deviation A12, see Appendix A: the reference
+parent's bindings, then the roots. **[CTX-1]** Overrides apply for **any
+defined value**, including falsy ones. *Deviation A12, see Appendix A: the
+reference
 implementation's resolution is truthiness-gated — a falsy override (`0`,
 `""`, `false`, `null`) silently falls back to the parent binding, so e.g. an
 `each` element whose value is `0` is evaluated against the parent scope
-instead of the element.* Shared fields are propagated **by reference**:
-writes to `errors` and registry mutations are visible to every scope of the
-invocation.
+instead of the element.* **[CTX-2]** Shared fields are propagated **by
+reference**: writes to `errors` and registry mutations are visible to every
+scope of the invocation.
 
 The context is internal state; only `input`, the produced output, `valid`,
 and `errors` are part of an implementation's public result contract (§5.3).
@@ -336,13 +351,13 @@ An evaluator invocation `map(document, input)` proceeds:
 
 The envelope merges bookkeeping keys into the output's own key space; a
 mapping that writes top-level keys named `valid` or `errors` collides with
-them. Mapping documents SHOULD NOT write those keys at the top level; a
-future revision may separate the envelope.
+them. **[CTX-3]** Mapping documents SHOULD NOT write those keys at the top
+level; a future revision may separate the envelope.
 
 The reference implementation's invocation additionally accepts a third
 argument merged into the fresh context (able to override scopes and
-registries); it is **not part of this contract** and portable callers MUST
-NOT rely on it.
+registries); it is **not part of this contract** and **[CTX-4]** portable
+callers MUST NOT rely on it.
 
 Step 1's registration into a live evaluator is observable state (§3.5): a
 subsequent invocation can `$ref` mappings registered by an earlier one.
@@ -379,13 +394,14 @@ MAP(descriptor, context):
 
 Requirements:
 
-- Pairings MUST evaluate sequentially in document order; element fan-out
-  under `each` and variant-list evaluation MAY proceed concurrently (§5.7).
-- The value dispatch MUST write every defined value; booleans and `null`
-  are values. *Deviation A1.*
-- An empty array MUST map to an empty array. *Deviation A2.*
-- Variant lists MUST select the first **defined** result in list order.
-  *Deviation A5: the reference implementation selects the first truthy
+- **[MAP-1]** Pairings MUST evaluate sequentially in document order; element
+  fan-out under `each` and variant-list evaluation MAY proceed concurrently
+  (§5.7).
+- **[MAP-2]** The value dispatch MUST write every defined value; booleans and
+  `null` are values. *Deviation A1.*
+- **[MAP-3]** An empty array MUST map to an empty array. *Deviation A2.*
+- **[MAP-4]** Variant lists MUST select the first **defined** result in list
+  order. *Deviation A5: the reference implementation selects the first truthy
   result, skipping defined-but-falsy values such as `0`, `""`, and `false`.*
 
 `each` is an exact alias of `mapping`; if both appear, `mapping` wins. The
@@ -447,15 +463,15 @@ GET(descriptor, context):
 
 Requirements and notes:
 
-- The stage order above is observable behavior and MUST be preserved.
-  Consequences implementations must reproduce: `constant` overrides plugin
-  and `init` results; validation sees the *transformed* value; `default`
-  applies **after** validation (an absent value with a `default` still fails
-  `required`); `as` coerces last.
-- The `switch` keywords name the **scope the branch key is read from** — they
-  are not aliases: `switch.source` reads the branch key from the value being
-  switched on; `switch.input` reads it from the root input; `switch.output`
-  reads it from the root output. This allows a document to switch on context
+- **[GET-1]** The stage order above is observable behavior and MUST be
+  preserved. Consequences implementations must reproduce: `constant`
+  overrides plugin and `init` results; validation sees the *transformed*
+  value; `default` applies **after** validation (an absent value with a
+  `default` still fails `required`); `as` coerces last.
+- **[GET-2]** The `switch` keywords name the **scope the branch key is read
+  from** — they are not aliases: `switch.source` reads the branch key from
+  the value being switched on; `switch.input` reads it from the root input;
+  `switch.output` reads it from the root output. This allows a document to switch on context
   the switched value does not itself carry. When more than one is present,
   `source` takes precedence, then `input`, then `output`. Whichever scope
   selects the branch, the chosen case always evaluates the *switched value*.
@@ -467,18 +483,20 @@ Requirements and notes:
 - Plugin daisy-chaining: every descriptor key matching a registered plugin
   fires, in document order, each replacing the value — this is the wiring
   mechanism of flow-style documents.
-- Validators MUST treat undefined uniformly: absent values are validated only
-  by `required`, and validators check only values of their own type.
+- **[GET-3]** Validators MUST treat undefined uniformly: absent values are
+  validated only by `required`, and validators check only values of their own
+  type.
   *Deviation A4 (validator and coercion edge cases): in the reference
   implementation `minLength`/`maxLength` throw on undefined and also
   length-check arrays; `minimum: 0`/`maximum: 0` are ignored (falsy keyword
   guard); `multipleOf` fires on undefined and non-numeric values, and its
   decimal handling produces false errors (e.g. `0.3` vs `multipleOf: 0.1`);
   `type: integer` accepts anything numerically coercible (`"5"`, `true`,
-  `null`).* `as` on undefined MUST yield undefined. *Deviation A4: `as:
-  string` throws, `as: number` yields NaN, `as: boolean` yields `false`.*
+  `null`).* **[GET-4]** `as` on undefined MUST yield undefined. *Deviation
+  A4: `as: string` throws, `as: number` yields NaN, `as: boolean` yields
+  `false`.*
 - Unknown `init`/`transform` names are skipped silently in the reference
-  implementation; implementations SHOULD offer a diagnostic mode.
+  implementation; **[GET-5]** implementations SHOULD offer a diagnostic mode.
 
 ### 5.6 READ, NEST, and DEREF
 
@@ -511,25 +529,26 @@ All fan-out *within* one pairing is unordered and MAY be concurrent:
 
 Because plugins are asynchronous, this concurrency is where I/O parallelism
 arises: an `each` over n items issuing one fetch per item runs its fetches
-concurrently. Implementations MUST NOT let concurrent branches observe each
-other's partial writes; each branch writes only its own fresh target.
-Implementations MAY additionally parallelize independent pairings only if no
-descriptor in the level reads `target`/`output` — a static analysis this
-specification permits but does not require (optimization signpost).
+concurrently. **[SEQ-1]** Implementations MUST NOT let concurrent branches
+observe each other's partial writes; each branch writes only its own fresh
+target. **[SEQ-2]** Implementations MAY additionally parallelize independent
+pairings only if no descriptor in the level reads `target`/`output` — a
+static analysis this specification permits but does not require (optimization
+signpost).
 
 ### 5.8 Errors
 
-Validation keywords append **error objects** to the shared `errors`
-accumulator and never interrupt the pipeline mid-descriptor. Error objects
-carry the failing keyword, the offending value, the descriptor's read
+**[ERR-1]** Validation keywords append **error objects** to the shared
+`errors` accumulator and never interrupt the pipeline mid-descriptor. Error
+objects carry the failing keyword, the offending value, the descriptor's read
 keyword(s) for provenance, and a human-readable `message` (exact shapes in
 §6, pinned by the validation cases in the test suite).
 
-After each pairing, MAP checks the accumulator: if non-empty, the current MAP
-returns NULL immediately (short-circuit), abandoning the rest of the level
-and propagating outward — enclosing levels observe the shared accumulator and
-short-circuit in turn. The envelope (§5.3) then reports `valid: false` with
-all accumulated errors and no partial output.
+**[ERR-2]** After each pairing, MAP checks the accumulator: if non-empty, the
+current MAP returns NULL immediately (short-circuit), abandoning the rest of
+the level and propagating outward — enclosing levels observe the shared
+accumulator and short-circuit in turn. The envelope (§5.3) then reports
+`valid: false` with all accumulated errors and no partial output.
 
 Errors raised by extensions (thrown/rejected) are not part of this error
 model: they propagate to the caller as exceptions. A future revision may
@@ -541,8 +560,8 @@ One section per keyword. Each entry states the keyword's **tier** (§2.2), the
 **stage** at which it acts (§5.4 MAP, §5.5 GET, or registration §3.5/§5.3),
 its **value grammar**, and its behavior. *Cases* names the suite file(s) in
 `test/cases/` exercising the keyword. Keywords not listed here are not part of
-this specification; implementations MUST NOT assign behavior to unknown
-descriptor keys other than registered plugin names (§6.8).
+this specification; **[KW-1]** implementations MUST NOT assign behavior to
+unknown descriptor keys other than registered plugin names (§6.8).
 
 ### 6.1 Reading
 
@@ -683,8 +702,8 @@ locate stage read is discarded. *Cases: `03-finalize`.*
 #### `random`, `unique`
 **Experimental · GET shape · value: positive integer / `true`.**
 Selects `random` members of an array value at random (`random: 1` yields the
-member itself, larger counts an array). `unique` requires distinct members
-and MUST terminate (*Deviation A9*). Nondeterministic by design — conformance
+member itself, larger counts an array). **[KW-random-1]** `unique` requires
+distinct members and MUST terminate (*Deviation A9*). Nondeterministic by design — conformance
 cases use shape assertions. *Cases: `09-probes-deviations` (F6).*
 
 #### `template`
@@ -719,9 +738,10 @@ expression literal for downstream query languages). *Cases: `03-finalize`.*
 **Core · GET finalize · value: `"string" | "number" | "boolean" | "json"`.**
 Coerces the final value: string conversion, numeric conversion, boolean
 conversion, or JSON serialization. Applied to undefined it MUST yield
-undefined (*Deviation A4*). A numeric coercion that does not produce a finite
-number (e.g. `as: number` of a non-numeric string) is a diagnostic;
-implementations MUST NOT emit non-JSON numbers (*the reference implementation
+undefined (*Deviation A4*). **[KW-as-1]** A numeric coercion that does not
+produce a finite number (e.g. `as: number` of a non-numeric string) is a
+diagnostic; implementations MUST NOT emit non-JSON numbers (*the reference
+implementation
 produces NaN, which serializes as `null` — Deviation A4*). *Cases:
 `03-finalize`, `09-probes-deviations` (F5), `10-catalog-gaps`.*
 
@@ -735,7 +755,7 @@ the offending `value`, provenance (the descriptor's read keyword, e.g.
 `source`), and a human-readable `message`:
 
 ```json
-{ "source": "/a", "value": 3, "maximum": 2, "message": "cannot be greater than 2" }
+{ "source": "/a", "value": 3, "maximum": 2 the area that owns them (￼￼DOC￼￼ documents, , "message": "cannot be greater than 2" }
 ```
 
 Exact shapes per keyword are pinned by `04-validation`.
@@ -770,7 +790,8 @@ this pointer before the pipeline continues. *Cases: `08-extensions`.*
 #### `stdout`
 **Experimental · MAP, after pairings · value: `true` or JSON Pointer string.**
 Writes the completed target (or the value at the pointer, JSON-serialized) to
-the implementation's diagnostic output channel. MUST NOT affect the result.
+the implementation's diagnostic output channel. **[KW-stdout-1]** It MUST NOT
+affect the result.
 *Cases: `09-probes-deviations` (F8).*
 
 ## 7. Extension interfaces
@@ -803,13 +824,14 @@ pipeline value — often undefined, since a common idiom is generating a value
 for a target location with no source (identifiers, timestamps) — and the full
 context (§7.5). The return value replaces the pipeline value.
 
-Initializers MUST be synchronous. The reference implementation does not await
+**[EXT-2]** Initializers MUST be synchronous. The reference implementation
+does not await
 them: an asynchronous initializer's promise flows through the `constant` and
 `random` stages, which then misbehave — `random`, for example, silently
 passes the promise through instead of selecting — before the template stage's
 internal await incidentally resolves it, so `transform`, validation, and
-finalize see the resolved value. Portable documents MUST NOT rely on that
-artifact. *Cases: `11-extension-interfaces`.*
+finalize see the resolved value. **[EXT-3]** Portable documents MUST NOT
+rely on that artifact. *Cases: `11-extension-interfaces`.*
 
 ### 7.3 Transformers
 
@@ -821,7 +843,8 @@ Invoked by `transform` steps in order (§6.6). A string step passes no
 options; an object step passes **the step object itself** as `options` — the
 transformer reads its parameters from its own name's key (e.g. a step
 `{ "split": ", " }` invokes `split` with `options.split === ", "`).
-Transformers MUST be synchronous, for the same reason as initializers.
+**[EXT-6]** Transformers MUST be synchronous, for the same reason as
+initializers.
 *Cases: `08-extensions`.*
 
 ### 7.4 Plugins
@@ -857,13 +880,13 @@ Extensions receive the evaluation context (§5.2) and MAY:
   plugin composition (a fetch plugin consulting cache and throttle plugins,
   for example) is an intended pattern;
 - **recursively invoke evaluation** on a sub-descriptor with a derived
-  context (e.g. mapping a request body before sending it). Implementations
-  MUST be re-entrant: a nested evaluation started by an extension follows
-  this specification with its own scopes while sharing the invocation's
-  roots, registries, and error accumulator.
+  context (e.g. mapping a request body before sending it). **[EXT-4]**
+  Implementations MUST be re-entrant: a nested evaluation started by an
+  extension follows this specification with its own scopes while sharing the
+  invocation's roots, registries, and error accumulator.
 
-Extensions MUST NOT rebind the context's shared fields and SHOULD treat the
-input as immutable. Nothing in this section grants extensions influence over
+**[EXT-5]** Extensions MUST NOT rebind the context's shared fields and SHOULD
+treat the input as immutable. Nothing in this section grants extensions influence over
 pairing order or pipeline stage order — those remain fixed (§3.2, §5.5).
 
 ### 7.6 Determinism and portability
@@ -872,9 +895,9 @@ The extension names a document uses are part of that document's contract: a
 document is only portable to deployments providing compatible functions under
 the same names. Deployments SHOULD document their extension set (a
 declaration mechanism in the document itself is future work — Appendix C).
-Conformance test cases MUST use deterministic extensions; effectful plugins
-SHOULD be idempotent per evaluation so retries and concurrent fan-out (§5.7)
-are safe.
+**[EXT-7]** Conformance test cases MUST use deterministic extensions;
+**[EXT-8]** effectful plugins SHOULD be idempotent per evaluation so retries
+and concurrent fan-out (§5.7) are safe.
 
 ## 8. Algorithmic characteristics
 
@@ -1148,6 +1171,60 @@ Recorded for future revisions, not requirements of this draft:
 - **Extension-requirements declaration** — a way for a mapping document to
   declare the extension names (and versions) it depends on, so deployments
   can validate a document's portability before evaluating it (§7.6).
+
+## Appendix D. Requirement traceability (informative)
+
+Every identified requirement (§1.2), the section that states it, the suite
+files that exercise it, and the Appendix A deviation that applies to the
+reference implementation, if any. *(gap)* marks requirements with no covering
+case yet.
+
+| Req         | Section | Cases                                                           | Deviation |
+| ----------- | ------- | --------------------------------------------------------------- | --------- |
+| DOC-1       | §3.2    | `01-source-reads`, `09-probes-deviations` (F1)                  | —         |
+| DOC-2       | §3.3    | `09-probes-deviations` (F7)                                     | A6        |
+| REG-1       | §3.5    | `09-probes-deviations` (F11)                                    | A7        |
+| REG-2       | §3.5    | `06-references`, `10-catalog-gaps`, `13-audit-probes`           | —         |
+| REG-3       | §3.5    | `13-audit-probes` (F13)                                         | A11       |
+| REG-4       | §3.5    | `13-audit-probes` (F13)                                         | A11       |
+| EXT-1       | §3.6    | *(gap — not suite-testable as data)*                            | —         |
+| EXT-2       | §7.2    | `11-extension-interfaces`                                       | —         |
+| EXT-3       | §7.2    | `11-extension-interfaces`                                       | —         |
+| EXT-4       | §7.5    | *(gap)*                                                         | —         |
+| EXT-5       | §7.5    | *(gap)*                                                         | —         |
+| EXT-6       | §7.3    | `08-extensions`                                                 | —         |
+| EXT-7       | §7.6    | *(meta-requirement on suites themselves)*                       | —         |
+| EXT-8       | §7.6    | *(gap — behavioral guidance)*                                   | —         |
+| PTR-1       | §4.1    | `01-source-reads`, `02-combinators`, `04-validation`            | —         |
+| PTR-2       | §4.2    | *(gap)*                                                         | —         |
+| PTR-3       | §4.3    | `05-mapping-core` (language map)                                | —         |
+| PTR-4       | §4.3    | `09-probes-deviations` (F4)                                     | A3        |
+| PTR-5       | §4.3    | *(gap)*                                                         | —         |
+| PTR-6       | §4.3    | `09-probes-deviations` (F4)                                     | A3        |
+| PTR-7       | §4.3    | `13-audit-probes` (write-through)                               | —         |
+| PTR-8       | §4.4    | `01-source-reads`, `10-catalog-gaps`                            | —         |
+| PTR-9       | §4.4    | `09-probes-deviations` (F9)                                     | A8        |
+| CTX-1       | §5.2    | `13-audit-probes` (F14)                                         | A12       |
+| CTX-2       | §5.2    | `11-extension-interfaces`                                       | —         |
+| CTX-3       | §5.3    | *(gap — SHOULD, document-level)*                                | —         |
+| CTX-4       | §5.3    | *(caller requirement — not suite-testable)*                     | —         |
+| MAP-1       | §5.4    | `01-source-reads`, `09-probes-deviations` (F1)                  | —         |
+| MAP-2       | §5.4    | `09-probes-deviations` (F2)                                     | A1        |
+| MAP-3       | §5.4    | `09-probes-deviations` (F3)                                     | A2        |
+| MAP-4       | §5.4    | `09-probes-deviations` (F10)                                    | A5        |
+| GET-1       | §5.5    | `03-finalize`, `08-extensions`                                  | —         |
+| GET-2       | §5.5    | `09-probes-deviations` (F12)                                    | A10       |
+| GET-3       | §5.5    | `04-validation`, `09-probes-deviations` (F5), `10-catalog-gaps` | A4        |
+| GET-4       | §5.5    | `09-probes-deviations` (F5), `10-catalog-gaps`                  | A4        |
+| GET-5       | §5.5    | `08-extensions`, `10-catalog-gaps`                              | —         |
+| SEQ-1       | §5.7    | `08-extensions` (async each)                                    | —         |
+| SEQ-2       | §5.7    | *(permission — nothing to test)*                                | —         |
+| ERR-1       | §5.8    | `04-validation`                                                 | —         |
+| ERR-2       | §5.8    | `05-mapping-core`, `11-extension-interfaces`                    | —         |
+| KW-1        | §6      | *(gap)*                                                         | —         |
+| KW-random-1 | §6.6    | *(not probed — nonterminating)*                                 | A9        |
+| KW-as-1     | §6.6    | `10-catalog-gaps`                                               | A4        |
+| KW-stdout-1 | §6.9    | `09-probes-deviations` (F8)                                     | —         |
 
 ## References
 
