@@ -87,12 +87,16 @@ Keywords and behaviors are assigned one of three tiers:
 
 The data-expressed test suite under `test/cases/` accompanies this
 specification. Cases are tagged with `tier:` and exercise the reference
-implementation. Cases tagged `deviation:` pin reference-implementation
-behavior that differs from this specification (Appendix A); a conforming
-implementation is expected to *fail* those cases in their literal form and
-satisfy the specification text instead. All other cases double as conformance
-cases for any implementation, subject to the case format documented in
-`test/cases/README.md`.
+implementation. A `deviation:` tag marks a case as a **characterization
+probe** — it pins a specific reference-implementation behavior for regression
+purposes. Where that behavior differs from this specification the probe's tag
+value names an Appendix A row (`F2`…`F14`), and a conforming implementation is
+expected to *fail* the probe in its literal form and satisfy the
+specification text instead; where the probe merely documents behavior the
+specification also requires (e.g. `F1` key-order, `F6` random, `F8` stdout),
+it has no Appendix A row and a conforming implementation passes it. All
+non-probe cases are conformance cases for any implementation, subject to the
+case format documented in `test/cases/README.md`.
 
 ## 3. Data model and terminology
 
@@ -123,7 +127,7 @@ reorder or sort keys are unsuitable for mapping documents.
 
 ### 3.3 Mapping documents and descriptors
 
-A **descriptor** describes how to produce a value. It takes one of four forms:
+A **descriptor** describes how to produce a value. It takes one of five forms:
 
 | Form                          | Example                              | Meaning                                                                                                                                                                                   |
 | ----------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -161,9 +165,15 @@ Named mappings live in a **registry** keyed by `$id`.
 - `$extend` — single inheritance between named mappings, resolved when
   mappings are registered (not at evaluation time). The derived mapping's
   pairing map is the ancestor chain's pairings merged with the descendant's:
-  ancestor pairings appear first in order, descendant pairings override
-  same-key ancestors and append otherwise. `$extend` naming an unregistered
-  id MUST raise an error.
+  ancestor-only pairings first in ancestor order, then every descendant
+  pairing in descendant order — an overridden key evaluates in the
+  **descendant's position**, not the ancestor's. Inheritance merges **only
+  the pairing map**: any other descriptor keyword on ancestor or descendant
+  (e.g. `source`, `each`) is discarded by the merge. `$extend` naming an
+  unregistered id MUST raise an error. *Deviation A11, see Appendix A: the
+  reference implementation resolves `$extend` only at evaluator
+  construction — mappings registered at evaluation time (§5.3) are neither
+  resolved nor checked for unknown ancestors.*
 
 Registration order and re-registration: registering a mapping with an
 existing `$id` replaces it. Note that the reference implementation's
@@ -195,7 +205,10 @@ extensions and clarifications in this section.
 ### 4.1 Syntax and read semantics
 
 Pointers use RFC 6901 syntax, including `~0`/`~1` escaping. The empty pointer
-and the pointer `/` both denote the whole document on read.
+and the pointer `/` both denote the whole document on read. In this profile
+*any* pointer whose first token is empty (e.g. `//a`) also reads as the whole
+document — empty-string keys are unreachable on read, a departure from
+RFC 6901.
 
 Reading a location whose path does not exist MUST yield undefined (§3.1) —
 never an error. This "recovering read" is what gives `first`/`last`/`all`,
@@ -226,11 +239,17 @@ Writing `value` to `target` at a pointer:
   diagnostic. *Deviation A3: the reference implementation coerces such tokens
   to index 0 and inserts.*
 - On objects, the final token sets the property, replacing any existing value.
+- Writing **through** an existing non-container value: the reference
+  implementation silently replaces falsy intermediates (`0`, `""`, `false`,
+  `null`) with a fresh container, and raises a host error on truthy
+  primitives. Implementations SHOULD diagnose both instead of relying on
+  either behavior. *Cases: `13-audit-probes`.*
 
 ### 4.4 Relative source references (Extended)
 
-A descriptor string that does **not** begin with `/` and contains the segment
-`..` is a **relative reference**. It is resolved by path arithmetic against
+A descriptor string that does **not** begin with `/` and contains the
+substring `../` is a **relative reference** (a string merely *ending* in
+`..` does not qualify and falls to the name-string rule of §3.3). It is resolved by path arithmetic against
 the evaluation context's current *source path* (§5.2): segments are appended,
 `.` and empty segments are dropped, and `..` pops one segment. The resolved
 absolute pointer is then read **from the root input** (not from the current
@@ -283,9 +302,14 @@ in two classes:
 
 Deriving a child context from a parent ("shifting") resolves, in order:
 explicit overrides (e.g. a new source value for an `each` element), then the
-parent's bindings, then the roots. Shared fields are propagated **by
-reference**: writes to `errors` and registry mutations are visible to every
-scope of the invocation.
+parent's bindings, then the roots. Overrides apply for **any defined value**,
+including falsy ones. *Deviation A12, see Appendix A: the reference
+implementation's resolution is truthiness-gated — a falsy override (`0`,
+`""`, `false`, `null`) silently falls back to the parent binding, so e.g. an
+`each` element whose value is `0` is evaluated against the parent scope
+instead of the element.* Shared fields are propagated **by reference**:
+writes to `errors` and registry mutations are visible to every scope of the
+invocation.
 
 The context is internal state; only `input`, the produced output, `valid`,
 and `errors` are part of an implementation's public result contract (§5.3).
@@ -314,6 +338,11 @@ The envelope merges bookkeeping keys into the output's own key space; a
 mapping that writes top-level keys named `valid` or `errors` collides with
 them. Mapping documents SHOULD NOT write those keys at the top level; a
 future revision may separate the envelope.
+
+The reference implementation's invocation additionally accepts a third
+argument merged into the fresh context (able to override scopes and
+registries); it is **not part of this contract** and portable callers MUST
+NOT rely on it.
 
 Step 1's registration into a live evaluator is observable state (§3.5): a
 subsequent invocation can `$ref` mappings registered by an earlier one.
@@ -439,10 +468,15 @@ Requirements and notes:
   fires, in document order, each replacing the value — this is the wiring
   mechanism of flow-style documents.
 - Validators MUST treat undefined uniformly: absent values are validated only
-  by `required`. *Deviation A4: in the reference implementation `minLength`/
-  `maxLength` throw on undefined, and `minimum: 0`/`maximum: 0` are ignored
-  (falsy keyword guard).* `as` on undefined MUST yield undefined.
-  *Deviation A4.*
+  by `required`, and validators check only values of their own type.
+  *Deviation A4 (validator and coercion edge cases): in the reference
+  implementation `minLength`/`maxLength` throw on undefined and also
+  length-check arrays; `minimum: 0`/`maximum: 0` are ignored (falsy keyword
+  guard); `multipleOf` fires on undefined and non-numeric values, and its
+  decimal handling produces false errors (e.g. `0.3` vs `multipleOf: 0.1`);
+  `type: integer` accepts anything numerically coercible (`"5"`, `true`,
+  `null`).* `as` on undefined MUST yield undefined. *Deviation A4: `as:
+  string` throws, `as: number` yields NaN, `as: boolean` yields `false`.*
 - Unknown `init`/`transform` names are skipped silently in the reference
   implementation; implementations SHOULD offer a diagnostic mode.
 
@@ -519,13 +553,20 @@ Reads from the current source scope (§5.2). On a structural descriptor,
 for descendants (§5.6 SHIFT) — reading and scoping are the same keyword.
 An absent location reads as undefined. *Cases: `01-source-reads`.*
 
+Note the asymmetry with `target` below: `source` is the only keyword that
+rebinds a scope on structural descent. Nested mappings always write into a
+fresh target placed at their pairing's left pointer; a structural
+descriptor's `target` keyword affects only what its pairings *read*.
+
 #### `target`
 **Core · GET locate · value: JSON Pointer string.**
 Reads from the current target scope — the object under construction at this
 nesting level. Because pairings evaluate in document order (§3.2), a `target`
 read observes only writes made by earlier pairings. On a structural
-descriptor, `target` rebinds the target scope/path. *Cases:
-`01-source-reads`.*
+descriptor, `target` selects the *read* scope for its pairings; it does
+**not** rebind where they write — nested mappings always write into the fresh
+target created for their pairing (an internal target path is tracked but
+never consumed). *Cases: `01-source-reads`.*
 
 #### `input`
 **Core · GET locate · value: JSON Pointer string.**
@@ -575,10 +616,12 @@ ids are diagnostics. *Deviation A7.* *Cases: `06-references`,
 #### `$extend`
 **Core · registration · value: string.**
 Single inheritance, resolved transitively when mappings are registered:
-ancestor pairings first in order; same-key pairings overridden by the
-descendant in the ancestor's position; new descendant pairings appended.
-Unknown ids MUST raise an error at registration. *Cases: `06-references`,
-`10-catalog-gaps`.*
+ancestor-only pairings first in ancestor order, then all descendant pairings
+in descendant order (overridden keys evaluate in the descendant's position —
+observable through `target`/`output` reads). Only the pairing map is merged;
+other descriptor keywords are discarded (§3.5). Unknown ids MUST raise an
+error at registration. *Deviation A11.* *Cases: `06-references`,
+`10-catalog-gaps`, `13-audit-probes`.*
 
 #### `description`
 **Core · inert · value: string.**
@@ -618,10 +661,11 @@ yields undefined; a falsy branch key leaves the value unswitched. *Cases:
 
 #### `find`
 **Core · GET shape · value: `{ eq: map, pointer?: pointer }`.**
-Selects the first member of the pipeline value (a non-array value is treated
-as a one-member list) whose properties strictly equal every `eq` entry
-(shallow comparison). `pointer` then narrows the selected member. No match
-yields undefined. *Cases: `02-combinators`, `10-catalog-gaps`.*
+Selects the first member of the pipeline value (a non-array **object** is
+treated as a one-member list; non-object values — including `null` — skip
+`find` and pass through unchanged) whose properties strictly equal every `eq`
+entry (shallow comparison). `pointer` then narrows the selected member. No
+match yields undefined. *Cases: `02-combinators`, `10-catalog-gaps`.*
 
 ### 6.6 Value pipeline
 
@@ -647,9 +691,11 @@ cases use shape assertions. *Cases: `09-probes-deviations` (F6).*
 **Core · GET shape · value: string with `{{param}}` placeholders (requires `mapping`).**
 When the pipeline value is an object, applies the descriptor's `mapping` to
 it and substitutes each `{{param}}` with the mapped result's top-level
-`param` property; placeholders without a value render as the empty string.
-Non-object values pass through unchanged. *Cases: `08-extensions`,
-`10-catalog-gaps`.*
+`param` property; placeholders whose mapped value is **falsy** (absent, `0`,
+`""`, `false`, `null`) render as the empty string. Non-object values pass
+through unchanged — but note `null` counts as an object here and triggers the
+template (evaluating against the parent scope via Deviation A12). *Cases:
+`08-extensions`, `10-catalog-gaps`, `13-audit-probes`.*
 
 #### `transform`
 **Core · GET shape · value: transformer name, or ordered array of steps.**
@@ -696,10 +742,10 @@ Exact shapes per keyword are pinned by `04-validation`.
 
 | Keyword | Value | Constraint checked |
 |---|---|---|
-| `type` | `"array" \| "boolean" \| "integer" \| "null" \| "number" \| "object" \| "string"` | the value's JSON type; `integer` accepts integral numbers |
+| `type` | `"array" \| "boolean" \| "integer" \| "null" \| "number" \| "object" \| "string"` | the value's JSON type; `integer` accepts integral numbers (*A4: ref. impl. accepts anything numerically coercible*) |
 | `minimum` / `maximum` | number | numeric lower/upper bound (inclusive); zero-valued bounds are honored (*Deviation A4*) |
-| `multipleOf` | number | divisibility, decimal-aware |
-| `minLength` / `maxLength` | non-negative integer | string length bounds |
+| `multipleOf` | number | divisibility of numeric values (*A4: ref. impl. fires on undefined/non-numbers and false-errors on decimal operands*) |
+| `minLength` / `maxLength` | non-negative integer | string length bounds (*A4: ref. impl. throws on undefined and length-checks arrays*) |
 | `enum` | array | membership (strict equality) |
 | `pattern` | regular-expression string | match anywhere in a string value; non-strings skipped |
 | `required` | boolean | when `true`, an undefined value is an error (checked before `default`) |
@@ -743,7 +789,7 @@ shared context (§5.2): every scope of an invocation sees the same functions.
 Plugin names share the descriptor keyword namespace — a plugin named like a
 built-in keyword is unreachable, and implementations SHOULD warn at
 registration (§3.6). Initializer and transformer names inhabit their own
-value nam260706-161112-smith-draft-catalog-reviewespaces (`init:` and `transform:` operands) and cannot collide with
+value namespaces (`init:` and `transform:` operands) and cannot collide with
 keywords.
 
 ### 7.2 Initializers
@@ -758,11 +804,12 @@ for a target location with no source (identifiers, timestamps) — and the full
 context (§7.5). The return value replaces the pipeline value.
 
 Initializers MUST be synchronous. The reference implementation does not await
-them: an asynchronous initializer's promise flows through the subsequent
-shape stages, which then misbehave — `random`, for example, silently passes
-the promise through instead of selecting — before an internal await
-incidentally resolves it ahead of validation and finalize. Portable documents
-MUST NOT rely on that artifact. *Cases: `11-extension-interfaces`.*
+them: an asynchronous initializer's promise flows through the `constant` and
+`random` stages, which then misbehave — `random`, for example, silently
+passes the promise through instead of selecting — before the template stage's
+internal await incidentally resolves it, so `transform`, validation, and
+finalize see the resolved value. Portable documents MUST NOT rely on that
+artifact. *Cases: `11-extension-interfaces`.*
 
 ### 7.3 Transformers
 
@@ -858,7 +905,8 @@ wherever `each`, variant lists, or `first`/`last`/`all` multiply work.
   O(members × eq-entries). `concat` is O(elements). `template` adds one
   nested evaluation plus O(template length).
 - **Registry operations.** `$extend` resolution is performed at registration
-  (§3.5): evaluation-time `deref` is a single map lookup.
+  (§3.5; Deviation A11 for evaluation-time registration): evaluation-time
+  `deref` is a single map lookup.
 - **Short-circuiting** (§5.8) bounds wasted work after the first error to the
   remainder of the pairing in flight; concurrent fan-out branches already
   started MAY run to completion (their writes land in discarded targets).
@@ -1029,18 +1077,20 @@ this specification. The *probe* column names the characterization cases in
 deviation is retired by fixing the implementation and updating its probes in
 the same change.
 
-| ID     | Specification                                                                                                                             | Reference implementation                                                                                         | Probes                           |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| **A1** | Booleans and `null` are values; the MAP dispatch writes them (§5.4).                                                                      | Dropped silently on the structural/switch dispatch path (written correctly on the plain path).                   | `F2-boolean-null-loss`           |
-| **A2** | An empty array maps to an empty array (§5.4).                                                                                             | Takes the object branch and nests to `{}`.                                                                       | `F3-empty-array`                 |
-| **A3** | Non-negative-integer tokens (including `0`) infer arrays on recovering writes; non-integer final tokens on arrays are diagnostics (§4.3). | Token `"0"` creates an object; non-integer final tokens on arrays coerce to index 0 and splice-insert.           | `F4-recover-container-inference` |
-| **A4** | Validators skip undefined except `required`; zero-valued numeric bounds are honored; `as` on undefined yields undefined (§5.5).           | `minLength`/`maxLength` throw on undefined; `minimum: 0`/`maximum: 0` ignored; `as: string` throws on undefined. | `F5-validator-edge-cases`        |
-| **A5** | Variant lists select the first **defined** result (§5.4).                                                                                 | Selects the first **truthy** result; defined-but-falsy results are skipped.                                      | `F10-variant-truthiness`         |
-| **A6** | A string descriptor that is not a pointer, relative reference, or registered name is a diagnostic (§3.3).                                 | Passes through as a literal and evaluates to the whole source scope.                                             | `F7-deref-ambiguity`             |
-| **A7** | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                        | Resolves to undefined; evaluation fails with an unrelated type error.                                            | `F11-unknown-ref`                |
-| **A8** | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                            | Slash-prefixed pointers containing `..` are read as literal tokens (yielding undefined).                         | `F9-relative-pointer-gating`     |
-| **A9** | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                        | Loops indefinitely when `random` exceeds the number of distinct members.                                         | *(not probed — nonterminating)*  |
-| **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5). | All three read the branch key from the switched value. | `F12-switch-scope` |
+| ID      | Specification                                                                                                                                                                                                     | Reference implementation                                                                                                                                                                                                                                                                                                    | Probes                           |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| **A1**  | Booleans and `null` are values; the MAP dispatch writes them (§5.4).                                                                                                                                              | Dropped silently on the structural/switch dispatch path (written correctly on the plain path).                                                                                                                                                                                                                              | `F2-boolean-null-loss`           |
+| **A2**  | An empty array maps to an empty array (§5.4).                                                                                                                                                                     | Takes the object branch and nests to `{}`.                                                                                                                                                                                                                                                                                  | `F3-empty-array`                 |
+| **A3**  | Non-negative-integer tokens (including `0`) infer arrays on recovering writes; non-integer final tokens on arrays are diagnostics (§4.3).                                                                         | Token `"0"` creates an object; non-integer final tokens on arrays coerce to index 0 and splice-insert.                                                                                                                                                                                                                      | `F4-recover-container-inference` |
+| **A4**  | Validators skip undefined except `required` and check only values of their own type; zero-valued numeric bounds are honored; decimal `multipleOf` operands work; `as` on undefined yields undefined (§5.5, §6.7). | `minLength`/`maxLength` throw on undefined and length-check arrays; `minimum: 0`/`maximum: 0` ignored; `multipleOf` fires on undefined and non-numbers and false-errors on decimal operands; `type: integer` accepts numerically coercible values; `as` of undefined: `string` throws, `number` → NaN, `boolean` → `false`. | `F5-validator-edge-cases`        |
+| **A5**  | Variant lists select the first **defined** result (§5.4).                                                                                                                                                         | Selects the first **truthy** result; defined-but-falsy results are skipped.                                                                                                                                                                                                                                                 | `F10-variant-truthiness`         |
+| **A6**  | A string descriptor that is not a pointer, relative reference, or registered name is a diagnostic (§3.3).                                                                                                         | Passes through as a literal and evaluates to the whole source scope.                                                                                                                                                                                                                                                        | `F7-deref-ambiguity`             |
+| **A7**  | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                                                                                                | Resolves to undefined; evaluation fails with an unrelated type error.                                                                                                                                                                                                                                                       | `F11-unknown-ref`                |
+| **A8**  | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                                                                                                    | Slash-prefixed pointers containing `..` are read as literal tokens (yielding undefined).                                                                                                                                                                                                                                    | `F9-relative-pointer-gating`     |
+| **A9**  | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                                                                                                | Loops indefinitely when `random` exceeds the number of distinct members.                                                                                                                                                                                                                                                    | *(not probed — nonterminating)*  |
+| **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5).                                                              | All three read the branch key from the switched value.                                                                                                                                                                                                                                                                      | `F12-switch-scope`               |
+| **A11** | `$extend` resolves (and unknown-ancestor errors surface) whenever a mapping is registered, including evaluation-time registration (§3.5, §5.3).                                                                   | Only evaluator construction resolves `$extend`; mappings registered at evaluation time keep it unresolved (ancestor pairings silently missing) and unknown ancestors raise no error.                                                                                                                                        | `F13-late-registration`          |
+| **A12** | Context-derivation overrides apply for any defined value (§5.2).                                                                                                                                                  | Truthiness-gated: falsy overrides (`0`, `""`, `false`, `null`) fall back to the parent binding — e.g. a falsy `each` element evaluates against the parent scope.                                                                                                                                                            | `F14-falsy-scope`                |
 
 **Note on A10.** Observed mapping documents pair the
 descriptor's locate keyword with the matching switch scope — e.g.
