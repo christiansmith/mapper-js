@@ -1,0 +1,106 @@
+# Coverage gaps surfaced while writing the keyword catalog (SPEC.md §6).
+suite: catalog gaps
+level: get
+tests:
+  - description: concat on a non-array value passes through
+    tier: core
+    descriptor: { source: /s, concat: true }
+    input: { s: abc }
+    expected: { value: abc, errors: [] }
+
+  - description: find with no matching member is undefined
+    tier: core
+    descriptor:
+      source: /ids
+      find:
+        eq: { idType: doi }
+        pointer: /value
+    input:
+      ids:
+        - { idType: issn, value: '1234-5678' }
+    expected: { value: __undefined__, errors: [] }
+
+  - description: extend overrides same-key pairings in ancestor position and appends new ones
+    tier: core
+    level: extend
+    descriptor:
+      $id: 'mapping:Child'
+      $extend: 'mapping:Parent'
+      mapping:
+        /b: /cb
+        /c: /cc
+    mappings:
+      'mapping:Parent':
+        $id: 'mapping:Parent'
+        mapping:
+          /a: /pa
+          /b: /pb
+    expected:
+      result:
+        $id: 'mapping:Child'
+        $extend: 'mapping:Parent'
+        mapping:
+          /a: /pa
+          /b: /cb
+          /c: /cc
+
+  - description: template with a non-object value passes through
+    tier: core
+    descriptor:
+      source: /s
+      template: 'X{{a}}'
+      mapping:
+        /a: /a
+    input: { s: plain }
+    expected: { value: plain, errors: [] }
+
+  - description: unknown initializer names are skipped
+    tier: core
+    descriptor: { source: /s, init: no-such-initializer }
+    input: { s: kept }
+    expected: { value: kept, errors: [] }
+
+  - description: relative pointer inside each reads outside the element
+    tier: extended
+    level: map
+    descriptor:
+      mapping:
+        /out:
+          source: /items
+          each:
+            /item: /label
+            /parent: ../../name
+    input:
+      name: root
+      items:
+        - { label: a }
+        - { label: b }
+    expected:
+      result:
+        out:
+          - { item: a, parent: root }
+          - { item: b, parent: root }
+      errors: []
+
+  - description: a cases map with only default always selects it
+    tier: core
+    level: map
+    descriptor:
+      mapping:
+        /switched:
+          source: /
+          switch:
+            source: /type
+            cases:
+              default: /val
+    input: { type: anything, val: 42 }
+    expected:
+      result: { switched: 42 }
+      errors: []
+
+  - description: as number of a non-numeric string produces NaN (serializes as null)
+    tier: core
+    deviation: F5-validator-edge-cases
+    descriptor: { source: /s, as: number }
+    input: { s: abc }
+    expected: { value: null, errors: [] }
