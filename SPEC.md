@@ -1012,7 +1012,7 @@ the offending `value`, provenance (the descriptor's read keyword, e.g.
 `source`), and a human-readable `message`:
 
 ```json
-{ "source": "/a", "value": 3, "maximum": 2 the area that owns them (￼￼DOC￼￼ documents, , "message": "cannot be greater than 2" }
+{ "source": "/a", "value": 3, "maximum": 2, "message": "cannot be greater than 2" }
 ```
 
 Exact shapes per keyword are pinned by `04-validation`.
