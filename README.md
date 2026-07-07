@@ -149,6 +149,9 @@ evaluate sub-mappings. The full contract is [`SPEC.md` §7](SPEC.md).
 
 ## Documentation
 
+- [The Mapper docs site](https://christiansmith.github.io/mapper/) has
+  tutorials, how-to guides, a keyword reference, and explanations. Start
+  there to learn or use the library.
 - [`SPEC.md`](SPEC.md) is the specification: data model, evaluation
   algorithms, every keyword, conformance tiers, and an appendix of known
   deviations of this implementation.
