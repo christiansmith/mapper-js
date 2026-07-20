@@ -5,6 +5,7 @@
 | | |
 |---|---|
 | **Status** | Draft 0.1 |
+| **Pinned reference state** | tag `spec-v0.1` (git `bc09002`) |
 | **Reference implementation** | `@christiansmith/mapper-js` 0.1.1 (git `fa4de6f`) |
 | **Test suite** | `test/cases/` (see [Appendix B](#appendix-b-test-suite-and-case-format-informative)) |
 | **Quick reference** | [`docs/quick-reference.md`](docs/quick-reference.md) |
