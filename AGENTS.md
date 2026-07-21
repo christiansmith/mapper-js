@@ -27,3 +27,17 @@ the output. Published to JSR and npm as `@christiansmith/mapper-js`.
   behavior changes deliberately, update the affected cases (and their
   `deviation` markers) in the same commit.
 - `deno.json` `publish.exclude` keeps `test/` out of the JSR tarball.
+
+## Authorship
+
+This engine is the maintainer's original work, and source changes are his to
+write. Agents working in this repo:
+
+- **Do not edit source files by default.** Contribute questions that probe how
+  the code should work, proposals clearly framed as proposals, and test cases
+  (YAML cases in `test/cases/`) for the maintainer to edit and review.
+- **The maintainer writes the changes that satisfy the tests.** He may
+  delegate a specific edit explicitly, per change; absent that grant, leave
+  the source untouched.
+- **Nothing commits without maintainer review and sign-off** — this applies to
+  delegated edits too.
