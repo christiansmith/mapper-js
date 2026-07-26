@@ -520,16 +520,7 @@ Requirements and notes:
   mechanism of flow-style documents.
 - **[GET-3]** Validators MUST treat undefined uniformly: absent values are
   validated only by `required`, and validators check only values of their own
-  type.
-  *Deviation A4 (validator and coercion edge cases): in the reference
-  implementation `minLength`/`maxLength` throw on undefined and also
-  length-check arrays; `minimum: 0`/`maximum: 0` are ignored (falsy keyword
-  guard); `multipleOf` fires on undefined and non-numeric values, and its
-  decimal handling produces false errors (e.g. `0.3` vs `multipleOf: 0.1`);
-  `type: integer` accepts anything numerically coercible (`"5"`, `true`,
-  `null`).* **[GET-4]** `as` on undefined MUST yield undefined. *Deviation
-  A4: `as: string` throws, `as: number` yields NaN, `as: boolean` yields
-  `false`.*
+  type. **[GET-4]** `as` on undefined MUST yield undefined.
 - Unknown `init`/`transform` names are skipped silently in the reference
   implementation; **[GET-5]** implementations SHOULD offer a diagnostic mode.
 
@@ -986,7 +977,7 @@ value:      '/abc/i'
 **Core · GET finalize · value: `"string" | "number" | "boolean" | "json"`.**
 Coerces the pipeline value at the finalize stage: string conversion, numeric conversion, boolean
 conversion, or JSON serialization. Applied to undefined it MUST yield
-undefined (*Deviation A4*). **[KW-as-1]** A numeric coercion that does not
+undefined. **[KW-as-1]** A numeric coercion that does not
 produce a finite number (e.g. `as: number` of a non-numeric string) is a
 diagnostic; implementations MUST NOT emit non-JSON numbers (*the reference
 implementation
@@ -1000,14 +991,14 @@ value:      '7'
 ```
 
 *Cases: `14-keyword-examples`,
-`03-finalize`, `09-probes-deviations` (F5), `10-catalog-gaps`.*
+`03-finalize`, `09-probes-deviations` (A4), `10-catalog-gaps`.*
 
 ### 6.7 Validation
 
 All validation keywords act at the GET validate stage (§5.5): each appends an
 **error object** to the shared accumulator and passes the value through
-unchanged. Except for `required`, validators MUST skip undefined values
-(*Deviation A4*). The error object carries the failing keyword and operand,
+unchanged. Except for `required`, validators MUST skip undefined values.
+The error object carries the failing keyword and operand,
 the offending `value`, provenance (the descriptor's read keyword, e.g.
 `source`), and a human-readable `message`:
 
@@ -1035,7 +1026,7 @@ errors:
 | Keyword | Value | Constraint checked |
 |---|---|---|
 | `type` | `"array" \| "boolean" \| "integer" \| "null" \| "number" \| "object" \| "string"` | the value's JSON type; `integer` accepts integral numbers (*A4: ref. impl. accepts anything numerically coercible*) |
-| `minimum` / `maximum` | number | numeric lower/upper bound (inclusive); zero-valued bounds are honored (*Deviation A4*) |
+| `minimum` / `maximum` | number | numeric lower/upper bound (inclusive); zero-valued bounds are honored |
 | `multipleOf` | number | divisibility of numeric values (*A4: ref. impl. fires on undefined/non-numbers and false-errors on decimal operands*) |
 | `minLength` / `maxLength` | non-negative integer | string length bounds (*A4: ref. impl. throws on undefined and length-checks arrays*) |
 | `enum` | array | membership (strict equality) |
@@ -1397,7 +1388,7 @@ the same change.
 | **A1**  | Booleans and `null` are values; the MAP dispatch writes them (§5.4).                                                                                                                                              | *Fixed in 0.2.0; the former `F2-boolean-null-loss` probes now assert conformance.*                                                                                                                                                                                                                                          | `A1` conformance cases           |
 | **A2**  | An empty array maps to an empty array (§5.4).                                                                                                                                                                     | *Fixed in 0.2.0; the former `F3-empty-array` probe now asserts conformance.*                                                                                                                                                                                                                                                | `A2` conformance case            |
 | **A3**  | Non-negative-integer tokens (including `0`) infer arrays on recovering writes; non-integer final tokens on arrays are diagnostics (§4.3).                                                                         | *Partially fixed in 0.2.0 — container inference (incl. `-` and beyond-length clamping) conforms; the PTR-6 diagnostic remains open: non-integer final tokens on arrays still coerce to index 0 (deferred to 0.4.0 errors work; not probed).*                                                                                | `A3` conformance cases           |
-| **A4**  | Validators skip undefined except `required` and check only values of their own type; zero-valued numeric bounds are honored; decimal `multipleOf` operands work; `as` on undefined yields undefined (§5.5, §6.7). | `minLength`/`maxLength` throw on undefined and length-check arrays; `minimum: 0`/`maximum: 0` ignored; `multipleOf` fires on undefined and non-numbers and false-errors on decimal operands; `type: integer` accepts numerically coercible values; `as` of undefined: `string` throws, `number` → NaN, `boolean` → `false`. | `F5-validator-edge-cases`        |
+| **A4**  | Validators skip undefined except `required` and check only values of their own type; zero-valued numeric bounds are honored; decimal `multipleOf` operands work; `as` on undefined yields undefined (§5.5, §6.7). | *Partially fixed in 0.2.0 — everything this row lists conforms (the former probes now assert conformance, 14 `A4` cases); the KW-as-1 diagnostic remains open: `as: number` of non-numeric input still yields NaN instead of a diagnostic (deferred to 0.4.0 errors work; see §6.6).*                                       | `A4` conformance cases           |
 | **A5**  | Variant lists select the first **defined** result (§5.4).                                                                                                                                                         | Selects the first **truthy** result; defined-but-falsy results are skipped.                                                                                                                                                                                                                                                 | `F10-variant-truthiness`         |
 | **A6**  | A string descriptor that is not a pointer, relative reference, or registered name is a diagnostic (§3.3).                                                                                                         | Passes through as a literal and evaluates to the whole source scope.                                                                                                                                                                                                                                                        | `F7-deref-ambiguity`             |
 | **A7**  | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                                                                                                | Resolves to undefined; evaluation fails with an unrelated type error.                                                                                                                                                                                                                                                       | `F11-unknown-ref`                |
@@ -1506,8 +1497,8 @@ case yet.
 | MAP-4       | §5.4    | `09-probes-deviations` (F10)                                    | A5        |
 | GET-1       | §5.5    | `03-finalize`, `08-extensions`                                  | —         |
 | GET-2       | §5.5    | `09-probes-deviations` (F12)                                    | A10       |
-| GET-3       | §5.5    | `04-validation`, `09-probes-deviations` (F5), `10-catalog-gaps` | A4        |
-| GET-4       | §5.5    | `09-probes-deviations` (F5), `10-catalog-gaps`                  | A4        |
+| GET-3       | §5.5    | `04-validation`, `09-probes-deviations` (A4), `10-catalog-gaps` | A4        |
+| GET-4       | §5.5    | `09-probes-deviations` (A4), `10-catalog-gaps`                  | A4        |
 | GET-5       | §5.5    | `08-extensions`, `10-catalog-gaps`                              | —         |
 | SEQ-1       | §5.7    | `08-extensions` (async each)                                    | —         |
 | SEQ-2       | §5.7    | *(permission — nothing to test)*                                | —         |

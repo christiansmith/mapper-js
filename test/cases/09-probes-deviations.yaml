@@ -150,26 +150,101 @@ tests:
           - x
       errors: []
 
-  - description: 'F5: minLength on an absent value throws'
-    deviation: F5-validator-edge-cases
+  - description: 'A4: minLength skips an absent value'
     level: get
     descriptor: { source: /missing, minLength: 2 }
     input: {}
-    throws: length
+    expected: { value: __undefined__, errors: [] }
 
-  - description: 'F5: as string on an absent value throws'
-    deviation: F5-validator-edge-cases
+  - description: 'A4: maxLength skips an absent value'
+    level: get
+    descriptor: { source: /missing, maxLength: 2 }
+    input: {}
+    expected: { value: __undefined__, errors: [] }
+
+  - description: 'A4: minLength skips an array'
+    level: get
+    descriptor: { source: /list, minLength: 3 }
+    input: { list: [1, 2] }
+    expected: { value: [1, 2], errors: [] }
+
+  - description: 'A4: maxLength skips an array'
+    level: get
+    descriptor: { source: /list, maxLength: 1 }
+    input: { list: [1, 2] }
+    expected: { value: [1, 2], errors: [] }
+
+  - description: 'A4: as string on an absent value yields undefined'
     level: get
     descriptor: { source: /missing, as: string }
     input: {}
-    throws: toString
+    expected: { value: __undefined__, errors: [] }
 
-  - description: 'F5: minimum 0 is never enforced (falsy guard)'
-    deviation: F5-validator-edge-cases
+  - description: 'A4: as number on an absent value yields undefined'
+    level: get
+    descriptor: { source: /missing, as: number }
+    input: {}
+    expected: { value: __undefined__, errors: [] }
+
+  - description: 'A4: as boolean on an absent value yields undefined'
+    level: get
+    descriptor: { source: /missing, as: boolean }
+    input: {}
+    expected: { value: __undefined__, errors: [] }
+
+  - description: 'A4: minimum 0 is enforced'
     level: get
     descriptor: { source: /n, minimum: 0 }
     input: { n: -5 }
-    expected: { value: -5, errors: [] }
+    expected:
+      value: -5
+      errors:
+        - { source: /n, value: -5, minimum: 0, message: cannot be less than 0 }
+
+  - description: 'A4: maximum 0 is enforced'
+    level: get
+    descriptor: { source: /n, maximum: 0 }
+    input: { n: 5 }
+    expected:
+      value: 5
+      errors:
+        - { source: /n, value: 5, maximum: 0, message: cannot be greater than 0 }
+
+  - description: 'A4: multipleOf skips an absent value'
+    level: get
+    descriptor: { source: /missing, multipleOf: 3 }
+    input: {}
+    expected: { value: __undefined__, errors: [] }
+
+  - description: 'A4: multipleOf skips a non-number'
+    level: get
+    descriptor: { source: /s, multipleOf: 2 }
+    input: { s: abc }
+    expected: { value: abc, errors: [] }
+
+  - description: 'A4: multipleOf accepts a conforming decimal multiple'
+    level: get
+    descriptor: { source: /n, multipleOf: 0.1 }
+    input: { n: 0.3 }
+    expected: { value: 0.3, errors: [] }
+
+  - description: 'A4: multipleOf rejects a non-multiple decimal'
+    level: get
+    descriptor: { source: /n, multipleOf: 0.1 }
+    input: { n: 0.35 }
+    expected:
+      value: 0.35
+      errors:
+        - { source: /n, value: 0.35, multipleOf: 0.1, message: must be a multiple of 0.1 }
+
+  - description: 'A4: type integer rejects a numeric string'
+    level: get
+    descriptor: { source: /s, type: integer }
+    input: { s: '42' }
+    expected:
+      value: '42'
+      errors:
+        - { source: /s, value: '42', type: integer, message: must be an integer }
 
   - description: 'F6: random selects a member of the array (nondeterministic)'
     tier: experimental

@@ -535,7 +535,7 @@ function validateType(descriptor, value, errors) {
       complain(errors, descriptor, { value, type, message: `must be true or false` })
     }
 
-    if (type === 'integer' && !Number.isInteger(Number(value))) {
+    if (type === 'integer' && !Number.isInteger(value)) {
       complain(errors, descriptor, { value, type, message: `must be an integer` })
     }
 
@@ -560,7 +560,7 @@ function validateType(descriptor, value, errors) {
 function validateMaximum(descriptor, value, errors) {
   const { maximum } = descriptor
 
-  if (maximum && typeof value === 'number' && value > maximum) {
+  if (typeof maximum === 'number' && typeof value === 'number' && value > maximum) {
     complain(errors, descriptor, { value, maximum, message: `cannot be greater than ${maximum}` })
   }
 }
@@ -568,7 +568,7 @@ function validateMaximum(descriptor, value, errors) {
 function validateMinimum(descriptor, value, errors) {
   const { minimum } = descriptor
 
-  if (minimum && typeof value === 'number' && value < minimum) {
+  if (typeof minimum === 'number' && typeof value === 'number' && value < minimum) {
     complain(errors, descriptor, { value, minimum, message: `cannot be less than ${minimum}` })
   }
 }
@@ -576,14 +576,11 @@ function validateMinimum(descriptor, value, errors) {
 function validateMultipleOf(descriptor, value, errors) {
   const { multipleOf } = descriptor
 
-  if (typeof multipleOf === 'number') {
-    let length = multipleOf.toString().length
-    let decimals = length - multipleOf.toFixed(0).length - 1
-    let pow = decimals > 0 ? Math.pow(10, decimals) : 1
-    let condition = decimals > 0
-    let invalid = condition ? ((value * pow) % multipleOf) * pow !== 0 : value % multipleOf !== 0
+  if (typeof multipleOf === 'number' && typeof value === 'number') {
+    const decimals = (n) => (n.toString().split('.')[1] || '').length
+    const pow = Math.pow(10, Math.max(decimals(value), decimals(multipleOf)))
 
-    if (invalid) {
+    if (Math.round(value * pow) % Math.round(multipleOf * pow) !== 0) {
       complain(errors, descriptor, { value, multipleOf, message: `must be a multiple of ${multipleOf}` })
     }
   }
@@ -592,7 +589,7 @@ function validateMultipleOf(descriptor, value, errors) {
 function validateMinLength(descriptor, value, errors) {
   const { minLength } = descriptor
 
-  if (minLength && value.length < minLength) {
+  if (typeof minLength === 'number' && typeof value === 'string' && value.length < minLength) {
     complain(errors, descriptor, { value, minLength, message: `cannot be less than ${minLength} characters` })
   }
 }
@@ -600,7 +597,7 @@ function validateMinLength(descriptor, value, errors) {
 function validateMaxLength(descriptor, value, errors = []) {
   const { maxLength } = descriptor
 
-  if (maxLength && value.length > maxLength) {
+  if (typeof maxLength === 'number' && typeof value === 'string' && value.length > maxLength) {
     complain(errors, descriptor, { value, maxLength, message: `cannot be more than ${maxLength} characters` })
   }
 }
@@ -633,6 +630,10 @@ function validateRequired(descriptor, value, errors) {
 
 function as(descriptor, value) {
   const { as } = descriptor
+
+  if (value === undefined) {
+    return undefined
+  }
 
   if (as === 'string') {
     return value.toString()
