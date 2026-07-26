@@ -154,7 +154,7 @@ export async function map(next, previous) {
         set(
           left,
           target,
-          value.find((item) => item)
+          value.find((item) => item !== undefined)
         )
 
         // right descriptor is an object

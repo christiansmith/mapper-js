@@ -289,19 +289,17 @@ tests:
       d: { e: 5 }
     expected: { value: __undefined__, errors: [] }
 
-  - description: 'F10: a variant list selects the first truthy result, skipping falsy defined values'
-    deviation: F10-variant-truthiness
+  - description: 'A5: a variant list selects the first defined result, falsy included'
     level: map
     descriptor:
       mapping:
         /x: ['/zero', '/one']
     input: { zero: 0, one: 1 }
     expected:
-      result: { x: 1 }
+      result: { x: 0 }
       errors: []
 
-  - description: 'F10: the first combinator, by contrast, selects the first defined value'
-    deviation: F10-variant-truthiness
+  - description: 'A5: the first combinator selects the first defined value'
     level: get
     descriptor:
       first: ['/zero', '/one']

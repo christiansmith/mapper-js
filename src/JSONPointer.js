@@ -189,7 +189,7 @@ class JSONPointer {
 
             case RECOVER: {
               const container = tokens[i + 1] === '-' || /^(0|[1-9]\d*)$/.test(tokens[i + 1]) ? [] : {}
-              
+
               if (Array.isArray(current) && parseInt(token, 10) >= current.length) {
                 current.push(container)
               } else {

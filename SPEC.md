@@ -420,7 +420,7 @@ MAP(descriptor, context):
         undefined              → (nothing)
     else if rightDesc is an array:                            # variant list
       results ← parallel READ each variant in rightCtx
-      SET(left, target, first defined result)                 # Deviation A5: ref. impl. takes first truthy
+      SET(left, target, first defined result)
     else:
       SET(left, target, GET(rightDesc, rightCtx))             # undefined never writes (§4.3)
     if context.errors is non-empty: return NULL               # short-circuit (§5.8)
@@ -436,8 +436,7 @@ Requirements:
   `null` are values.
 - **[MAP-3]** An empty array MUST map to an empty array.
 - **[MAP-4]** Variant lists MUST select the first **defined** result in list
-  order. *Deviation A5: the reference implementation selects the first truthy
-  result, skipping defined-but-falsy values such as `0`, `""`, and `false`.*
+  order.
 
 `each` is an exact alias of `mapping`; if both appear, `mapping` wins. The
 alias exists for readability: `each` signals element-wise application to an
@@ -775,9 +774,8 @@ Documentation; carried through inheritance merges; no runtime effect.
 **Core · GET locate · value: array of descriptors.**
 Evaluate every listed descriptor (concurrently permitted, §5.7) and select:
 `first` — the first defined result in list order; `last` — the last defined
-result; `all` — every defined result, in list order. Contrast with variant
-arrays (§5.4), whose selection is currently truthiness-based in the reference
-implementation (*Deviation A5*).
+result; `all` — every defined result, in list order. Variant arrays (§5.4)
+select the same way: the first defined result.
 
 ```yaml
 # example 6.4-1
@@ -797,7 +795,7 @@ value:      [1, 2]
 ```
 
 *Cases: `02-combinators`, `14-keyword-examples`,
-`09-probes-deviations` (F10).*
+`09-probes-deviations` (A5).*
 
 #### `concat`
 **Core · GET shape · value: `true`.**
@@ -1389,7 +1387,7 @@ the same change.
 | **A2**  | An empty array maps to an empty array (§5.4).                                                                                                                                                                     | *Fixed in 0.2.0; the former `F3-empty-array` probe now asserts conformance.*                                                                                                                                                                                                                                                | `A2` conformance case            |
 | **A3**  | Non-negative-integer tokens (including `0`) infer arrays on recovering writes; non-integer final tokens on arrays are diagnostics (§4.3).                                                                         | *Partially fixed in 0.2.0 — container inference (incl. `-` and beyond-length clamping) conforms; the PTR-6 diagnostic remains open: non-integer final tokens on arrays still coerce to index 0 (deferred to 0.4.0 errors work; not probed).*                                                                                | `A3` conformance cases           |
 | **A4**  | Validators skip undefined except `required` and check only values of their own type; zero-valued numeric bounds are honored; decimal `multipleOf` operands work; `as` on undefined yields undefined (§5.5, §6.7). | *Partially fixed in 0.2.0 — everything this row lists conforms (the former probes now assert conformance, 14 `A4` cases); the KW-as-1 diagnostic remains open: `as: number` of non-numeric input still yields NaN instead of a diagnostic (deferred to 0.4.0 errors work; see §6.6).*                                       | `A4` conformance cases           |
-| **A5**  | Variant lists select the first **defined** result (§5.4).                                                                                                                                                         | Selects the first **truthy** result; defined-but-falsy results are skipped.                                                                                                                                                                                                                                                 | `F10-variant-truthiness`         |
+| **A5**  | Variant lists select the first **defined** result (§5.4).                                                                                                                                                         | *Fixed in 0.2.0; the former `F10-variant-truthiness` probes now assert conformance (variant lists and the `first` combinator agree).*                                                                                                                                                                                       | `A5` conformance cases           |
 | **A6**  | A string descriptor that is not a pointer, relative reference, or registered name is a diagnostic (§3.3).                                                                                                         | Passes through as a literal and evaluates to the whole source scope.                                                                                                                                                                                                                                                        | `F7-deref-ambiguity`             |
 | **A7**  | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                                                                                                | Resolves to undefined; evaluation fails with an unrelated type error.                                                                                                                                                                                                                                                       | `F11-unknown-ref`                |
 | **A8**  | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                                                                                                    | Slash-prefixed pointers containing `..` are read as literal tokens (yielding undefined).                                                                                                                                                                                                                                    | `F9-relative-pointer-gating`     |
@@ -1494,7 +1492,7 @@ case yet.
 | MAP-1       | §5.4    | `01-source-reads`, `09-probes-deviations` (F1)                  | —         |
 | MAP-2       | §5.4    | `09-probes-deviations` (A1)                                     | A1        |
 | MAP-3       | §5.4    | `09-probes-deviations` (A2)                                     | A2        |
-| MAP-4       | §5.4    | `09-probes-deviations` (F10)                                    | A5        |
+| MAP-4       | §5.4    | `09-probes-deviations` (A5)                                     | A5        |
 | GET-1       | §5.5    | `03-finalize`, `08-extensions`                                  | —         |
 | GET-2       | §5.5    | `09-probes-deviations` (F12)                                    | A10       |
 | GET-3       | §5.5    | `04-validation`, `09-probes-deviations` (A4), `10-catalog-gaps` | A4        |
