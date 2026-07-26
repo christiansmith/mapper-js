@@ -194,6 +194,9 @@ export async function get(descriptor, context) {
   } else if (typeof descriptor === 'string' && descriptor.includes('../')) {
     const resolved = resolve(context.paths.source, descriptor)
     value = JSONPointer.get(context.input, resolved)
+  } else if (typeof descriptor === 'string') {
+    complain(context.errors, {}, { descriptor, message: 'unrecognized string descriptor' })
+    return undefined
   } else if (descriptor.source) {
     value = JSONPointer.get(context.source, descriptor.source)
   } else if (descriptor.target) {

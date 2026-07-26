@@ -268,17 +268,27 @@ tests:
       /: { type: array, length: 2, subsetOf: [a, b] }
     expected: { errors: [] }
 
-  - description: 'F7: a non-pointer string descriptor evaluates to the whole source'
-    deviation: F7-deref-ambiguity
+  - description: 'A6: an unrecognized string descriptor yields a diagnostic and short-circuits'
     level: map
     descriptor:
       mapping:
         /x: not-a-pointer
     input: { a: 1 }
     expected:
-      result:
-        x: { a: 1 }
-      errors: []
+      result: null
+      errors:
+        - { descriptor: not-a-pointer, message: unrecognized string descriptor }
+
+  - description: 'A6: a bare fragment string descriptor is invalid'
+    level: map
+    descriptor:
+      mapping:
+        /x: '#/a'
+    input: { a: 1 }
+    expected:
+      result: null
+      errors:
+        - { descriptor: '#/a', message: unrecognized string descriptor }
 
   - description: 'F9: a slash-prefixed pointer containing .. reads literal tokens, unresolved'
     deviation: F9-relative-pointer-gating
