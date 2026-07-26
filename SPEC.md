@@ -415,10 +415,10 @@ MAP(descriptor, context):
         non-empty array        → SET(left, target,
                                      parallel for (item, i) in value:
                                        NEST(rightDesc, rightCtx, source := item, index := i))
+        empty array            → SET(left, target, [])
         object                 → SET(left, target, NEST(rightDesc, rightCtx, source := value))
         boolean | null         → SET(left, target, value)
         undefined              → (nothing)
-      # empty arrays: SET(left, target, [])                   # Deviation A2: ref. impl. nests → {}
     else if rightDesc is an array:                            # variant list
       results ← parallel READ each variant in rightCtx
       SET(left, target, first defined result)                 # Deviation A5: ref. impl. takes first truthy
@@ -435,7 +435,7 @@ Requirements:
   (§5.7).
 - **[MAP-2]** The value dispatch MUST write every defined value; booleans and
   `null` are values.
-- **[MAP-3]** An empty array MUST map to an empty array. *Deviation A2.*
+- **[MAP-3]** An empty array MUST map to an empty array.
 - **[MAP-4]** Variant lists MUST select the first **defined** result in list
   order. *Deviation A5: the reference implementation selects the first truthy
   result, skipping defined-but-falsy values such as `0`, `""`, and `false`.*
@@ -1396,7 +1396,7 @@ the same change.
 | ID      | Specification                                                                                                                                                                                                     | Reference implementation                                                                                                                                                                                                                                                                                                    | Probes                           |
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
 | **A1**  | Booleans and `null` are values; the MAP dispatch writes them (§5.4).                                                                                                                                              | *Fixed in 0.2.0; the former `F2-boolean-null-loss` probes now assert conformance.*                                                                                                                                                                                                                                          | `A1` conformance cases           |
-| **A2**  | An empty array maps to an empty array (§5.4).                                                                                                                                                                     | Takes the object branch and nests to `{}`.                                                                                                                                                                                                                                                                                  | `F3-empty-array`                 |
+| **A2**  | An empty array maps to an empty array (§5.4).                                                                                                                                                                     | *Fixed in 0.2.0; the former `F3-empty-array` probe now asserts conformance.*                                                                                                                                                                                                                                                | `A2` conformance case            |
 | **A3**  | Non-negative-integer tokens (including `0`) infer arrays on recovering writes; non-integer final tokens on arrays are diagnostics (§4.3).                                                                         | Token `"0"` creates an object; non-integer final tokens on arrays coerce to index 0 and splice-insert.                                                                                                                                                                                                                      | `F4-recover-container-inference` |
 | **A4**  | Validators skip undefined except `required` and check only values of their own type; zero-valued numeric bounds are honored; decimal `multipleOf` operands work; `as` on undefined yields undefined (§5.5, §6.7). | `minLength`/`maxLength` throw on undefined and length-check arrays; `minimum: 0`/`maximum: 0` ignored; `multipleOf` fires on undefined and non-numbers and false-errors on decimal operands; `type: integer` accepts numerically coercible values; `as` of undefined: `string` throws, `number` → NaN, `boolean` → `false`. | `F5-validator-edge-cases`        |
 | **A5**  | Variant lists select the first **defined** result (§5.4).                                                                                                                                                         | Selects the first **truthy** result; defined-but-falsy results are skipped.                                                                                                                                                                                                                                                 | `F10-variant-truthiness`         |
@@ -1503,7 +1503,7 @@ case yet.
 | CTX-4       | §5.3    | *(caller requirement — not suite-testable)*                     | —         |
 | MAP-1       | §5.4    | `01-source-reads`, `09-probes-deviations` (F1)                  | —         |
 | MAP-2       | §5.4    | `09-probes-deviations` (A1)                                     | A1        |
-| MAP-3       | §5.4    | `09-probes-deviations` (F3)                                     | A2        |
+| MAP-3       | §5.4    | `09-probes-deviations` (A2)                                     | A2        |
 | MAP-4       | §5.4    | `09-probes-deviations` (F10)                                    | A5        |
 | GET-1       | §5.5    | `03-finalize`, `08-extensions`                                  | —         |
 | GET-2       | §5.5    | `09-probes-deviations` (F12)                                    | A10       |

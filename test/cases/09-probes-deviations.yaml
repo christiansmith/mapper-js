@@ -102,8 +102,7 @@ tests:
       result: { x: true }
       errors: []
 
-  - description: 'F3: an empty array under a nested mapping becomes an empty object'
-    deviation: F3-empty-array
+  - description: 'A2: an empty array under a nested mapping maps to an empty array'
     level: map
     descriptor:
       mapping:
@@ -112,7 +111,7 @@ tests:
           mapping: { /n: /name }
     input: { list: [] }
     expected:
-      result: { x: {} }
+      result: { x: [] }
       errors: []
 
   - description: 'F4: target index token "0" creates an object, not an array'

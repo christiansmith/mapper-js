@@ -128,7 +128,7 @@ export async function map(next, previous) {
 
           // value is a non-empty array
           // nested is a nested mapping on rightDesc
-        } else if (Array.isArray(value) && value.length > 0) {
+        } else if (Array.isArray(value)) {
           const promises = value.map(async (item, index) => {
             return await nest(rightDesc, rightContext, { source: item, index })
           })
