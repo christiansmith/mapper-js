@@ -316,14 +316,16 @@ tests:
     input: { zero: 0, one: 1 }
     expected: { value: 0, errors: [] }
 
-  - description: 'F11: $ref to an unregistered id fails with an unrelated TypeError'
-    deviation: F11-unknown-ref
+  - description: 'A7: $ref to an unregistered id yields a diagnostic naming the id'
     level: map
     descriptor:
       mapping:
         /x: { $ref: 'mapping:nope' }
     input: { a: 1 }
-    throws: Cannot read properties of undefined
+    expected:
+      result: null
+      errors:
+        - { $ref: 'mapping:nope', message: unknown mapping reference }
 
   - description: 'F12: switch.input reads the branch key from the switched value, not the root input'
     deviation: F12-switch-scope

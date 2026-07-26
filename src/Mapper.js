@@ -85,7 +85,21 @@ function deref(descriptor, context) {
   if (typeof descriptor === 'string') {
     return mappings[descriptor] || descriptor
   } else if (descriptor?.$ref) {
-    return mappings[descriptor.$ref]
+    const mapping = mappings[descriptor.$ref]
+
+    if (mapping === undefined) {
+      const errors = context.errors || []
+
+      complain(errors, descriptor, {
+        $ref: descriptor.$ref,
+        message: `unknown mapping reference`
+      })
+
+      context.errors = errors
+      return {}
+    }
+
+    return mapping
   } else {
     return descriptor
   }

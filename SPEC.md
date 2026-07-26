@@ -207,8 +207,7 @@ Named mappings live in a **registry** keyed by `$id`.
 - `$id` — names a mapping for reference.
 - `$ref` — substitutes the referenced mapping for the descriptor carrying it.
   **[REG-1]** A `$ref` to an unregistered id is an error; implementations
-  SHOULD produce a diagnostic naming the missing id. *Deviation A7, see
-  Appendix A.*
+  SHOULD produce a diagnostic naming the missing id.
 - `$extend` — single inheritance between named mappings, resolved when
   mappings are registered (not at evaluation time). **[REG-2]** The derived
   mapping's pairing map is the ancestor chain's pairings merged with the
@@ -723,7 +722,7 @@ Names a mapping in the registry (§3.5). Re-registration replaces.
 #### `$ref`
 **Core · evaluation-time resolution · value: string.**
 Substitutes the registered mapping for the descriptor carrying it. Unknown
-ids are diagnostics. *Deviation A7.*
+ids are diagnostics naming the id.
 
 ```yaml
 # example 6.3-1
@@ -739,7 +738,7 @@ result: { key: a, value: 1 }
 ```
 
 *Cases: `06-references`, `14-keyword-examples`,
-`09-probes-deviations` (F11).*
+`09-probes-deviations` (A7).*
 
 #### `$extend`
 **Core · registration · value: string.**
@@ -1391,7 +1390,7 @@ the same change.
 | **A4**  | Validators skip undefined except `required` and check only values of their own type; zero-valued numeric bounds are honored; decimal `multipleOf` operands work; `as` on undefined yields undefined (§5.5, §6.7). | *Partially fixed in 0.2.0 — everything this row lists conforms (the former probes now assert conformance, 14 `A4` cases); the KW-as-1 diagnostic remains open: `as: number` of non-numeric input still yields NaN instead of a diagnostic (deferred to 0.4.0 errors work; see §6.6).* | `A4` conformance cases          |
 | **A5**  | Variant lists select the first **defined** result (§5.4).                                                                                                                                                         | *Fixed in 0.2.0; the former `F10-variant-truthiness` probes now assert conformance (variant lists and the `first` combinator agree).*                                                                                                                                                 | `A5` conformance cases          |
 | **A6**  | A string descriptor that is not a pointer, relative reference, or registered name is a diagnostic (§3.3).                                                                                                         | *Fixed in 0.2.0; the former `F7-deref-ambiguity` probe now asserts conformance (undefined + diagnostic + §5.8 short-circuit; bare fragment strings ruled invalid).*                                                                                                                   | `A6` conformance cases          |
-| **A7**  | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                                                                                                | Resolves to undefined; evaluation fails with an unrelated type error.                                                                                                                                                                                                                 | `F11-unknown-ref`               |
+| **A7**  | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                                                                                                | *Fixed in 0.2.0; the former `F11-unknown-ref` probe now asserts conformance (diagnostic names the id; §5.8 short-circuit).*                                                                                                                                                           | `A7` conformance case           |
 | **A8**  | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                                                                                                    | Slash-prefixed pointers containing `..` are read as literal tokens (yielding undefined).                                                                                                                                                                                              | `F9-relative-pointer-gating`    |
 | **A9**  | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                                                                                                | Loops indefinitely when `random` exceeds the number of distinct members.                                                                                                                                                                                                              | *(not probed — nonterminating)* |
 | **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5).                                                              | All three read the branch key from the switched value.                                                                                                                                                                                                                                | `F12-switch-scope`              |
@@ -1466,7 +1465,7 @@ case yet.
 | ----------- | ------- | --------------------------------------------------------------- | --------- |
 | DOC-1       | §3.2    | `01-source-reads`, `09-probes-deviations` (F1)                  | —         |
 | DOC-2       | §3.3    | `09-probes-deviations` (A6)                                     | A6        |
-| REG-1       | §3.5    | `09-probes-deviations` (F11)                                    | A7        |
+| REG-1       | §3.5    | `09-probes-deviations` (A7)                                     | A7        |
 | REG-2       | §3.5    | `06-references`, `10-catalog-gaps`, `13-audit-probes`           | —         |
 | REG-3       | §3.5    | `13-audit-probes` (F13)                                         | A11       |
 | REG-4       | §3.5    | `13-audit-probes` (F13)                                         | A11       |
