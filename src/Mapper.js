@@ -507,103 +507,69 @@ function selectRandom(descriptor, value) {
   return value
 }
 
+function complain(errors, descriptor, error) {
+  const { source, target, input, output } = descriptor
+
+  if (source !== undefined) return errors.push({ source, ...error })
+  if (target !== undefined) return errors.push({ target, ...error })
+  if (input !== undefined) return errors.push({ input, ...error })
+  if (output !== undefined) return errors.push({ output, ...error })
+
+  errors.push(error)
+}
+
 function validateType(descriptor, value, errors) {
-  const { type, source } = descriptor
+  const { type } = descriptor
   // ...
   if (value !== undefined && type !== undefined) {
     if (type === 'array' && !Array.isArray(value)) {
-      errors.push({
-        source,
-        value,
-        type,
-        message: `must be an array`
-      })
+      complain(errors, descriptor, { value, type, message: `must be an array` })
     }
 
     if (type === 'boolean' && typeof value !== 'boolean') {
-      errors.push({
-        source,
-        value,
-        type,
-        message: `must be true or false`
-      })
+      complain(errors, descriptor, { value, type, message: `must be true or false` })
     }
 
     if (type === 'integer' && !Number.isInteger(Number(value))) {
-      errors.push({
-        source,
-        value,
-        type,
-        message: `must be an integer`
-      })
+      complain(errors, descriptor, { value, type, message: `must be an integer` })
     }
 
     if (type === 'null' && value !== null) {
-      errors.push({
-        source,
-        value,
-        type,
-        message: `must be null`
-      })
+      complain(errors, descriptor, { value, type, message: `must be null` })
     }
 
     if (type === 'number' && typeof value !== 'number') {
-      errors.push({
-        source,
-        value,
-        type,
-        message: `must be a number`
-      })
+      complain(errors, descriptor, { value, type, message: `must be a number` })
     }
 
     if (type === 'object' && (typeof value !== 'object' || Array.isArray(value) || value === null)) {
-      errors.push({
-        source,
-        value,
-        type,
-        message: `must be an object`
-      })
+      complain(errors, descriptor, { value, type, message: `must be an object` })
     }
 
     if (type === 'string' && typeof value !== 'string') {
-      errors.push({
-        source,
-        value,
-        type,
-        message: `must be a string`
-      })
+      complain(errors, descriptor, { value, type, message: `must be a string` })
     }
   }
 }
 
 function validateMaximum(descriptor, value, errors) {
-  const { maximum, source } = descriptor
+  const { maximum } = descriptor
 
   if (maximum && typeof value === 'number' && value > maximum) {
-    errors.push({
-      source,
-      value,
-      maximum,
-      message: `cannot be greater than ${maximum}`
-    })
+    complain(errors, descriptor, { value, maximum, message: `cannot be greater than ${maximum}` })
   }
 }
 
 function validateMinimum(descriptor, value, errors) {
-  const { minimum, source } = descriptor
+  const { minimum } = descriptor
 
   if (minimum && typeof value === 'number' && value < minimum) {
-    errors.push({
-      source,
-      value,
-      minimum,
-      message: `cannot be less than ${minimum}`
-    })
+    complain(errors, descriptor, { value, minimum, message: `cannot be less than ${minimum}` })
   }
 }
 
 function validateMultipleOf(descriptor, value, errors) {
-  const { multipleOf, source } = descriptor
+  const { multipleOf } = descriptor
 
   if (typeof multipleOf === 'number') {
     let length = multipleOf.toString().length
@@ -613,48 +579,30 @@ function validateMultipleOf(descriptor, value, errors) {
     let invalid = condition ? ((value * pow) % multipleOf) * pow !== 0 : value % multipleOf !== 0
 
     if (invalid) {
-      errors.push({
-        source,
-        value,
-        multipleOf,
-        message: `must be a multiple of ${multipleOf}`
-      })
+      complain(errors, descriptor, { value, multipleOf, message: `must be a multiple of ${multipleOf}` })
     }
   }
 }
 
 function validateMinLength(descriptor, value, errors) {
-  const { minLength, source } = descriptor
+  const { minLength } = descriptor
 
   if (minLength && value.length < minLength) {
-    errors.push({
-      source,
-      value,
-      minLength,
-      message: `cannot be less than ${minLength} characters`
-    })
+    complain(errors, descriptor, { value, minLength, message: `cannot be less than ${minLength} characters` })
   }
 }
 
 function validateMaxLength(descriptor, value, errors = []) {
-  const { maxLength, source } = descriptor
+  const { maxLength } = descriptor
 
   if (maxLength && value.length > maxLength) {
-    errors.push({
-      source,
-      value,
-      maxLength,
-      message: `cannot be more than ${maxLength} characters`
-    })
+    complain(errors, descriptor, { value, maxLength, message: `cannot be more than ${maxLength} characters` })
   }
 }
 
 function validateEnum(descriptor, value, errors) {
-  const { source } = descriptor
-
   if (value !== undefined && descriptor.enum?.indexOf(value) === -1) {
-    errors.push({
-      source,
+    complain(errors, descriptor, {
       value,
       enum: descriptor.enum,
       message: `must be one of ${JSON.stringify(descriptor.enum)}`
@@ -663,30 +611,18 @@ function validateEnum(descriptor, value, errors) {
 }
 
 function validatePattern(descriptor, value, errors) {
-  const { source, pattern } = descriptor
+  const { pattern } = descriptor
 
   if (typeof value === 'string' && !new RegExp(pattern).test(value)) {
-    errors.push({
-      source,
-      value,
-      pattern,
-      message: `must match pattern`
-    })
+    complain(errors, descriptor, { value, pattern, message: `must match pattern` })
   }
 }
 
 function validateRequired(descriptor, value, errors) {
-  const { required, source, target, input, output } = descriptor
+  const { required } = descriptor
 
   if (required && value === undefined) {
-    errors.push({
-      source,
-      target,
-      input,
-      output,
-      required,
-      message: `required value`
-    })
+    complain(errors, descriptor, { required, message: `required value` })
   }
 }
 

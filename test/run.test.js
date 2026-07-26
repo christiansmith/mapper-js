@@ -162,6 +162,9 @@ function applyOps(label, ops, value) {
           `${label} must be a subset of ${JSON.stringify(operand)}`
         )
         break
+      case 'keys':
+        assertEquals(Object.keys(Object(value)).sort(), [...operand].sort(), `${label} keys`)
+        break
       default:
         fail(`unknown assertion op "${op}"`)
     }

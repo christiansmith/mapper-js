@@ -193,3 +193,36 @@ tests:
     descriptor: { source: /a, required: false }
     input: { b: 86 }
     expected: { value: __undefined__, errors: [] }
+
+  # Error-object shape: errors carry the locate keyword that produced the
+  # value (mirroring get()'s branch order) plus the constraint fields — and
+  # never undefined-valued keys. Asserted with the `keys` op against the
+  # in-memory error objects, since the JSON round-trip in equality assertions
+  # cannot see present-but-undefined keys.
+
+  - description: 'error shape: required error carries only defined keys'
+    level: mapper
+    tier: core
+    descriptor: { /x: { source: /a, required: true } }
+    input: { b: 86 }
+    assert:
+      /valid: { equals: false }
+      /errors/0: { keys: [source, required, message] }
+
+  - description: 'error shape: input-located type error carries input provenance, no undefined source key'
+    level: mapper
+    tier: core
+    descriptor: { /x: { input: /a, type: string } }
+    input: { a: 42 }
+    assert:
+      /valid: { equals: false }
+      /errors/0: { keys: [input, value, type, message] }
+
+  - description: 'error shape: source-located type error keys are exactly source, value, type, message'
+    level: mapper
+    tier: core
+    descriptor: { /x: { source: /a, type: string } }
+    input: { a: 42 }
+    assert:
+      /valid: { equals: false }
+      /errors/0: { keys: [source, value, type, message] }
