@@ -416,7 +416,7 @@ MAP(descriptor, context):
                                      parallel for (item, i) in value:
                                        NEST(rightDesc, rightCtx, source := item, index := i))
         object                 → SET(left, target, NEST(rightDesc, rightCtx, source := value))
-        boolean | null         → SET(left, target, value)     # Deviation A1: ref. impl. drops these
+        boolean | null         → SET(left, target, value)
         undefined              → (nothing)
       # empty arrays: SET(left, target, [])                   # Deviation A2: ref. impl. nests → {}
     else if rightDesc is an array:                            # variant list
@@ -434,7 +434,7 @@ Requirements:
   fan-out under `each` and variant-list evaluation MAY proceed concurrently
   (§5.7).
 - **[MAP-2]** The value dispatch MUST write every defined value; booleans and
-  `null` are values. *Deviation A1.*
+  `null` are values.
 - **[MAP-3]** An empty array MUST map to an empty array. *Deviation A2.*
 - **[MAP-4]** Variant lists MUST select the first **defined** result in list
   order. *Deviation A5: the reference implementation selects the first truthy
@@ -1395,7 +1395,7 @@ the same change.
 
 | ID      | Specification                                                                                                                                                                                                     | Reference implementation                                                                                                                                                                                                                                                                                                    | Probes                           |
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| **A1**  | Booleans and `null` are values; the MAP dispatch writes them (§5.4).                                                                                                                                              | Dropped silently on the structural/switch dispatch path (written correctly on the plain path).                                                                                                                                                                                                                              | `F2-boolean-null-loss`           |
+| **A1**  | Booleans and `null` are values; the MAP dispatch writes them (§5.4).                                                                                                                                              | *Fixed in 0.2.0; the former `F2-boolean-null-loss` probes now assert conformance.*                                                                                                                                                                                                                                          | `A1` conformance cases           |
 | **A2**  | An empty array maps to an empty array (§5.4).                                                                                                                                                                     | Takes the object branch and nests to `{}`.                                                                                                                                                                                                                                                                                  | `F3-empty-array`                 |
 | **A3**  | Non-negative-integer tokens (including `0`) infer arrays on recovering writes; non-integer final tokens on arrays are diagnostics (§4.3).                                                                         | Token `"0"` creates an object; non-integer final tokens on arrays coerce to index 0 and splice-insert.                                                                                                                                                                                                                      | `F4-recover-container-inference` |
 | **A4**  | Validators skip undefined except `required` and check only values of their own type; zero-valued numeric bounds are honored; decimal `multipleOf` operands work; `as` on undefined yields undefined (§5.5, §6.7). | `minLength`/`maxLength` throw on undefined and length-check arrays; `minimum: 0`/`maximum: 0` ignored; `multipleOf` fires on undefined and non-numbers and false-errors on decimal operands; `type: integer` accepts numerically coercible values; `as` of undefined: `string` throws, `number` → NaN, `boolean` → `false`. | `F5-validator-edge-cases`        |
@@ -1502,7 +1502,7 @@ case yet.
 | CTX-3       | §5.3    | *(gap — SHOULD, document-level)*                                | —         |
 | CTX-4       | §5.3    | *(caller requirement — not suite-testable)*                     | —         |
 | MAP-1       | §5.4    | `01-source-reads`, `09-probes-deviations` (F1)                  | —         |
-| MAP-2       | §5.4    | `09-probes-deviations` (F2)                                     | A1        |
+| MAP-2       | §5.4    | `09-probes-deviations` (A1)                                     | A1        |
 | MAP-3       | §5.4    | `09-probes-deviations` (F3)                                     | A2        |
 | MAP-4       | §5.4    | `09-probes-deviations` (F10)                                    | A5        |
 | GET-1       | §5.5    | `03-finalize`, `08-extensions`                                  | —         |

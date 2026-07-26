@@ -63,8 +63,7 @@ tests:
           value: 1
       errors: []
 
-  - description: 'F2: a boolean value under a nested mapping is silently dropped'
-    deviation: F2-boolean-null-loss
+  - description: 'A1: a boolean value under a nested mapping is written'
     level: map
     descriptor:
       mapping:
@@ -73,11 +72,10 @@ tests:
           mapping: { /y: / }
     input: { b: true }
     expected:
-      result: {}
+      result: { x: true }
       errors: []
 
-  - description: 'F2: a null value under a nested mapping is silently dropped'
-    deviation: F2-boolean-null-loss
+  - description: 'A1: a null value under a nested mapping is written'
     level: map
     descriptor:
       mapping:
@@ -86,11 +84,10 @@ tests:
           mapping: { /y: / }
     input: { b: null }
     expected:
-      result: {}
+      result: { x: null }
       errors: []
 
-  - description: 'F2: a boolean selected by switch is silently dropped'
-    deviation: F2-boolean-null-loss
+  - description: 'A1: a boolean selected by switch is written'
     level: map
     descriptor:
       mapping:
@@ -102,7 +99,7 @@ tests:
               flag: /flag
     input: { kind: flag, flag: true }
     expected:
-      result: {}
+      result: { x: true }
       errors: []
 
   - description: 'F3: an empty array under a nested mapping becomes an empty object'

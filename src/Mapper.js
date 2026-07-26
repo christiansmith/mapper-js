@@ -118,7 +118,12 @@ export async function map(next, previous) {
 
         // conditionals at this level are switching on
         // characteristics of the source value
-        if (typeof value === 'string' || typeof value === 'number') {
+        if (
+          typeof value === 'string' ||
+          typeof value === 'number' ||
+          typeof value === 'boolean' ||
+          value === null
+        ) {
           set(left, target, value)
 
           // value is a non-empty array
