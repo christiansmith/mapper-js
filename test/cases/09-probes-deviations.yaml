@@ -114,8 +114,7 @@ tests:
       result: { x: [] }
       errors: []
 
-  - description: 'F4: target index token "0" creates an object, not an array'
-    deviation: F4-recover-container-inference
+  - description: 'A3: target index token "0" creates an array'
     level: map
     descriptor:
       mapping:
@@ -124,11 +123,10 @@ tests:
     expected:
       result:
         a:
-          '0': { b: x }
+          - { b: x }
       errors: []
 
-  - description: 'F4: target index token "1" creates an array and splice-inserts at index 0'
-    deviation: F4-recover-container-inference
+  - description: 'A3: a beyond-length target index clamps to the array end'
     level: map
     descriptor:
       mapping:
@@ -137,7 +135,19 @@ tests:
     expected:
       result:
         a:
-          '1': [x]
+          - { b: x }
+      errors: []
+
+  - description: 'A3: a "-" next token creates an array and appends'
+    level: map
+    descriptor:
+      mapping:
+        /a/-: /v
+    input: { v: x }
+    expected:
+      result:
+        a:
+          - x
       errors: []
 
   - description: 'F5: minLength on an absent value throws'

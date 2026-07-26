@@ -276,11 +276,10 @@ Writing `value` to `target` at a pointer:
   untouched; no intermediate containers are created).
 - **[PTR-4]** Missing intermediate containers are created ("recovering
   write"). The container kind is inferred from the *next* token: a token that
-  is a non-negative integer creates an array; any other token creates an
-  object.
-  *Deviation A3, see Appendix A: the reference implementation creates an
-  object for token `"0"` and arrays only for tokens whose integer value is
-  non-zero.*
+  is a non-negative integer (without leading zeros) or `-` creates an array;
+  any other token creates an object. A non-negative-integer token beyond the
+  length of an existing array clamps to the end: the created container is
+  appended.
 - **[PTR-5]** The final token `-` on an array appends.
 - A non-negative-integer final token on an array **inserts** at that index
   (splice semantics), shifting subsequent elements. **[PTR-6]** Writing a
@@ -1397,7 +1396,7 @@ the same change.
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
 | **A1**  | Booleans and `null` are values; the MAP dispatch writes them (§5.4).                                                                                                                                              | *Fixed in 0.2.0; the former `F2-boolean-null-loss` probes now assert conformance.*                                                                                                                                                                                                                                          | `A1` conformance cases           |
 | **A2**  | An empty array maps to an empty array (§5.4).                                                                                                                                                                     | *Fixed in 0.2.0; the former `F3-empty-array` probe now asserts conformance.*                                                                                                                                                                                                                                                | `A2` conformance case            |
-| **A3**  | Non-negative-integer tokens (including `0`) infer arrays on recovering writes; non-integer final tokens on arrays are diagnostics (§4.3).                                                                         | Token `"0"` creates an object; non-integer final tokens on arrays coerce to index 0 and splice-insert.                                                                                                                                                                                                                      | `F4-recover-container-inference` |
+| **A3**  | Non-negative-integer tokens (including `0`) infer arrays on recovering writes; non-integer final tokens on arrays are diagnostics (§4.3).                                                                         | *Partially fixed in 0.2.0 — container inference (incl. `-` and beyond-length clamping) conforms; the PTR-6 diagnostic remains open: non-integer final tokens on arrays still coerce to index 0 (deferred to 0.4.0 errors work; not probed).*                                                                                | `A3` conformance cases           |
 | **A4**  | Validators skip undefined except `required` and check only values of their own type; zero-valued numeric bounds are honored; decimal `multipleOf` operands work; `as` on undefined yields undefined (§5.5, §6.7). | `minLength`/`maxLength` throw on undefined and length-check arrays; `minimum: 0`/`maximum: 0` ignored; `multipleOf` fires on undefined and non-numbers and false-errors on decimal operands; `type: integer` accepts numerically coercible values; `as` of undefined: `string` throws, `number` → NaN, `boolean` → `false`. | `F5-validator-edge-cases`        |
 | **A5**  | Variant lists select the first **defined** result (§5.4).                                                                                                                                                         | Selects the first **truthy** result; defined-but-falsy results are skipped.                                                                                                                                                                                                                                                 | `F10-variant-truthiness`         |
 | **A6**  | A string descriptor that is not a pointer, relative reference, or registered name is a diagnostic (§3.3).                                                                                                         | Passes through as a literal and evaluates to the whole source scope.                                                                                                                                                                                                                                                        | `F7-deref-ambiguity`             |
@@ -1491,9 +1490,9 @@ case yet.
 | PTR-1       | §4.1    | `01-source-reads`, `02-combinators`, `04-validation`            | —         |
 | PTR-2       | §4.2    | `14-keyword-examples`                                           | —         |
 | PTR-3       | §4.3    | `05-mapping-core` (language map)                                | —         |
-| PTR-4       | §4.3    | `09-probes-deviations` (F4)                                     | A3        |
+| PTR-4       | §4.3    | `09-probes-deviations` (A3)                                     | A3        |
 | PTR-5       | §4.3    | `14-keyword-examples`                                           | —         |
-| PTR-6       | §4.3    | `09-probes-deviations` (F4)                                     | A3        |
+| PTR-6       | §4.3    | *(not probed — diagnostic deferred to 0.4.0)*                   | A3        |
 | PTR-7       | §4.3    | `13-audit-probes` (write-through)                               | —         |
 | PTR-8       | §4.4    | `01-source-reads`, `10-catalog-gaps`                            | —         |
 | PTR-9       | §4.4    | `09-probes-deviations` (F9)                                     | A8        |

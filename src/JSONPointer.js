@@ -187,9 +187,18 @@ class JSONPointer {
             case THROW:
               throw new Error('Invalid JSON Pointer reference')
 
-            case RECOVER:
-              current = current[token] = parseInt(token) ? [] : {}
+            case RECOVER: {
+              const container = tokens[i + 1] === '-' || /^(0|[1-9]\d*)$/.test(tokens[i + 1]) ? [] : {}
+              
+              if (Array.isArray(current) && parseInt(token, 10) >= current.length) {
+                current.push(container)
+              } else {
+                current[token] = container
+              }
+
+              current = container
               break
+            }
 
             case SILENT:
               return
