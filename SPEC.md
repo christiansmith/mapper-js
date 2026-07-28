@@ -462,7 +462,7 @@ GET(descriptor, context):
     otherwise                       → context.source            # scope pass-through
 
   # 2. dispatch
-  if switch: scope  ← case of: switch.source → value            # Deviation A10
+  if switch: scope  ← case of: switch.source → value
                               switch.input  → context.input
                               switch.output → context.output
              branch ← pointer read from scope
@@ -507,8 +507,6 @@ Requirements and notes:
   the switched value does not itself carry. When more than one is present,
   `source` takes precedence, then `input`, then `output`. Whichever scope
   selects the branch, the chosen case always evaluates the *switched value*.
-  *Deviation A10: the reference implementation reads the branch key from the
-  switched value regardless of which keyword supplies the pointer.*
 - When the selected case has no `mapping`, the case descriptor is evaluated
   against the *enclosing* context (the value override applies only to
   mapping-bearing cases). A falsy branch key leaves the value unswitched.
@@ -816,7 +814,7 @@ value:      [1, 2, 3]
 Selects a case descriptor by reading a **branch key**: `switch.source` reads
 it from the pipeline value; `switch.input` from the root input;
 `switch.output` from the root output (precedence `source` > `input` >
-`output`). *Deviation A10 — see also the note in Appendix A.* The matched
+`output`). The matched
 case (or `cases.default`; a `cases` map with only `default` is a valid
 "always" form) is evaluated with the *pipeline value* as its source when it
 carries a `mapping`; a plain-pointer case evaluates against the enclosing
@@ -839,7 +837,7 @@ result: { x: 2 }
 ```
 
 *Cases: `14-keyword-examples`,
-`07-switch`, `09-probes-deviations` (F12), `10-catalog-gaps`.*
+`07-switch`, `09-probes-deviations` (A10), `10-catalog-gaps`.*
 
 #### `find`
 **Core · GET shape · value: `{ eq: map, pointer?: pointer }`.**
@@ -1391,7 +1389,7 @@ the same change.
 | **A7**  | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                                                                                                | *Fixed in 0.2.0; the former `F11-unknown-ref` probe now asserts conformance (diagnostic names the id; §5.8 short-circuit).*                                                                                                                                                           | `A7` conformance case           |
 | **A8**  | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                                                                                                    | *Fixed in 0.2.0; the former `F9-relative-pointer-gating` probe now asserts conformance (diagnosed in bare and all locate-keyword read positions).*                                                                                                                                    | `A8` conformance cases          |
 | **A9**  | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                                                                                                | *Fixed in 0.2.0; termination now probed — an over-ask is diagnosed against the distinct count and yields undefined.*                                                                                                                                                                  | `A9` conformance case           |
-| **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5).                                                              | All three read the branch key from the switched value.                                                                                                                                                                                                                                | `F12-switch-scope`              |
+| **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5).                                                              | *Fixed in 0.2.0; the former `F12-switch-scope` probes now assert conformance. Idiomatic documents were unaffected — see the note below.*                                                                                                                                              | `A10` conformance cases         |
 | **A11** | `$extend` resolves (and unknown-ancestor errors surface) whenever a mapping is registered, including evaluation-time registration (§3.5, §5.3).                                                                   | Only evaluator construction resolves `$extend`; mappings registered at evaluation time keep it unresolved (ancestor pairings silently missing) and unknown ancestors raise no error.                                                                                                  | `F13-late-registration`         |
 | **A12** | Context-derivation overrides apply for any defined value (§5.2).                                                                                                                                                  | Truthiness-gated: falsy overrides (`0`, `""`, `false`, `null`) fall back to the parent binding — e.g. a falsy `each` element evaluates against the parent scope.                                                                                                                      | `F14-falsy-scope`               |
 
@@ -1400,9 +1398,9 @@ descriptor's locate keyword with the matching switch scope — e.g.
 `output: /` with `switch.output`, or a root-input source with `switch.input`.
 Under that idiom the switched value *is* the named scope, so the specified and
 actual behaviors coincide; they diverge only when the switched value differs
-from the named scope (the construction the `F12` probes use). Adopting the
-specified semantics therefore does not change the behavior of documents
-following the idiom.
+from the named scope (the construction the former `F12` — now `A10` — probes
+use). Adopting the specified semantics therefore did not change the behavior
+of documents following the idiom.
 
 ## Appendix B. Test suite and case format (informative)
 
@@ -1493,7 +1491,7 @@ case yet.
 | MAP-3       | §5.4    | `09-probes-deviations` (A2)                                     | A2        |
 | MAP-4       | §5.4    | `09-probes-deviations` (A5)                                     | A5        |
 | GET-1       | §5.5    | `03-finalize`, `08-extensions`                                  | —         |
-| GET-2       | §5.5    | `09-probes-deviations` (F12)                                    | A10       |
+| GET-2       | §5.5    | `09-probes-deviations` (A10)                                    | A10       |
 | GET-3       | §5.5    | `04-validation`, `09-probes-deviations` (A4), `10-catalog-gaps` | A4        |
 | GET-4       | §5.5    | `09-probes-deviations` (A4), `10-catalog-gaps`                  | A4        |
 | GET-5       | §5.5    | `08-extensions`, `10-catalog-gaps`                              | —         |

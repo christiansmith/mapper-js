@@ -299,10 +299,15 @@ export async function get(descriptor, context) {
 
   // switch
   if (descriptor?.switch) {
-    const branch = JSONPointer.get(
-      value,
-      descriptor.switch.source || descriptor.switch.input || descriptor.switch.output
-    )
+    let branch
+
+    if (descriptor.switch.source) {
+      branch = JSONPointer.get(value, descriptor.switch.source)
+    } else if (descriptor.switch.input) {
+      branch = JSONPointer.get(context.input, descriptor.switch.input)
+    } else if (descriptor.switch.output) {
+      branch = JSONPointer.get(context.output, descriptor.switch.output)
+    }
 
     if (branch) {
       const cases = descriptor.switch.cases
@@ -521,7 +526,7 @@ function transformValue(descriptor, value, context) {
     const descriptors = descriptor.transform
     let result = value
 
-    for (let desc of descriptors) {
+    for (const desc of descriptors) {
       if (typeof desc === 'string') {
         const fn = transformers[desc]
 
