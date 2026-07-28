@@ -770,17 +770,24 @@ function as(descriptor, value) {
 export function extend(descriptor, context) {
   const { $extend } = descriptor
 
-  if ($extend) {
-    const parent = deref($extend, context)
-
-    if (!parent || typeof parent === 'string') {
-      throw new Error(`Unknown mapping "${$extend}"`)
-    }
-
-    return merge(parent, descriptor, context)
-  } else {
+  if (!$extend) {
     return descriptor
   }
+
+  const ids = Array.isArray($extend) ? $extend : [$extend]
+  let ancestor = null
+
+  for (const id of ids) {
+    const parent = deref(id, context)
+
+    if (!parent || typeof parent === 'string') {
+      throw new Error(`Unknown mapping "${id}"`)
+    }
+
+    ancestor = ancestor ? merge(ancestor, parent, context) : parent
+  }
+
+  return merge(ancestor, descriptor, context)
 }
 
 /**
@@ -804,13 +811,12 @@ function merge(parent, descriptor, context) {
     return result
   }, [])
 
-  for (let key of distinctOrderedKeys) {
+  for (const key of distinctOrderedKeys) {
     mapping[key] = m[key]
   }
 
   return {
     $id,
-    $extend,
     description,
     mapping
   }

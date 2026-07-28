@@ -51,6 +51,150 @@ tests:
       result: { c: 1, b: 1, valid: true, errors: [] }
       valid: true
 
+  - description: 'CQ3: a mapping extends two ancestors, pairings merge in list order'
+    tier: core
+    level: mapper
+    id: 'mapping:entry'
+    mappings:
+      'mapping:citation':
+        $id: 'mapping:citation'
+        mapping:
+          /title: /title
+          /creator: /author
+      'mapping:activity':
+        $id: 'mapping:activity'
+        mapping:
+          /actor: /actor/name
+          /published: /date
+      'mapping:entry':
+        $id: 'mapping:entry'
+        $extend: ['mapping:citation', 'mapping:activity']
+        mapping:
+          /id: /doi
+    input:
+      title: T
+      author: A
+      actor: { name: N }
+      date: D
+      doi: X
+    expected:
+      result: { title: T, creator: A, actor: N, published: D, id: X, valid: true, errors: [] }
+      valid: true
+
+  - description: 'CQ3: on conflict the later-listed ancestor wins'
+    tier: core
+    level: mapper
+    id: 'mapping:child'
+    mappings:
+      'mapping:first':
+        $id: 'mapping:first'
+        mapping:
+          /name: { constant: first }
+      'mapping:second':
+        $id: 'mapping:second'
+        mapping:
+          /name: { constant: second }
+      'mapping:child':
+        $id: 'mapping:child'
+        $extend: ['mapping:first', 'mapping:second']
+        mapping:
+          /own: { constant: mine }
+    input: {}
+    expected:
+      result: { name: second, own: mine, valid: true, errors: [] }
+      valid: true
+
+  - description: 'CQ3: diamond ancestry resolves; the shared grandparent pairing appears once'
+    tier: core
+    level: mapper
+    id: 'mapping:child'
+    mappings:
+      'mapping:base':
+        $id: 'mapping:base'
+        mapping:
+          /kind: { constant: base }
+      'mapping:left':
+        $id: 'mapping:left'
+        $extend: 'mapping:base'
+        mapping:
+          /l: { constant: 1 }
+      'mapping:right':
+        $id: 'mapping:right'
+        $extend: 'mapping:base'
+        mapping:
+          /r: { constant: 2 }
+      'mapping:child':
+        $id: 'mapping:child'
+        $extend: ['mapping:left', 'mapping:right']
+        mapping:
+          /own: { constant: 3 }
+    input: {}
+    expected:
+      result: { kind: base, l: 1, r: 2, own: 3, valid: true, errors: [] }
+      valid: true
+
+  - description: 'CQ3: an overriding pairing relocates to the winning ancestor position across the fold'
+    tier: core
+    level: mapper
+    id: 'mapping:child'
+    mappings:
+      'mapping:one':
+        $id: 'mapping:one'
+        mapping:
+          /b: { constant: original }
+      'mapping:two':
+        $id: 'mapping:two'
+        mapping:
+          /c: { constant: 1 }
+          /b: { output: /c }
+      'mapping:child':
+        $id: 'mapping:child'
+        $extend: ['mapping:one', 'mapping:two']
+        mapping:
+          /d: { constant: end }
+    input: {}
+    expected:
+      # mapping:two's /b overrides mapping:one's and relocates after /c,
+      # so it reads the already-written /c from the output
+      result: { c: 1, b: 1, d: end, valid: true, errors: [] }
+      valid: true
+
+  - description: 'CQ3: an unknown id anywhere in the extend list raises an error'
+    tier: core
+    level: mapper
+    id: 'mapping:child'
+    mappings:
+      'mapping:known':
+        $id: 'mapping:known'
+        mapping:
+          /a: { constant: 1 }
+      'mapping:child':
+        $id: 'mapping:child'
+        $extend: ['mapping:known', 'mapping:missing']
+        mapping:
+          /b: { constant: 2 }
+    input: {}
+    throws: Unknown mapping
+
+  - description: 'CQ3: a one-element extend list is equivalent to the string form'
+    tier: core
+    level: mapper
+    id: 'mapping:child'
+    mappings:
+      'mapping:base':
+        $id: 'mapping:base'
+        mapping:
+          /a: { constant: 1 }
+      'mapping:child':
+        $id: 'mapping:child'
+        $extend: ['mapping:base']
+        mapping:
+          /b: { constant: 2 }
+    input: {}
+    expected:
+      result: { a: 1, b: 2, valid: true, errors: [] }
+      valid: true
+
   - description: 'A12: a falsy each element is evaluated in its own position'
     level: map
     descriptor:

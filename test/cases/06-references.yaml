@@ -107,7 +107,6 @@ tests:
     expected:
       result:
         $id: 'mapping:Extender'
-        $extend: 'mapping:Parent'
         mapping:
           /a: /a
           /b: /b
@@ -136,7 +135,6 @@ tests:
     expected:
       result:
         $id: 'mapping:Extender'
-        $extend: 'mapping:Parent'
         mapping:
           /a: /a
           /b: /b

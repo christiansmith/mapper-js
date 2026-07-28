@@ -38,7 +38,6 @@ tests:
     expected:
       result:
         $id: 'mapping:Child'
-        $extend: 'mapping:Parent'
         mapping:
           /a: /pa
           /b: /cb

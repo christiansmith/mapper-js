@@ -208,15 +208,26 @@ Named mappings live in a **registry** keyed by `$id`.
 - `$ref` — substitutes the referenced mapping for the descriptor carrying it.
   **[REG-1]** A `$ref` to an unregistered id is an error; implementations
   SHOULD produce a diagnostic naming the missing id.
-- `$extend` — single inheritance between named mappings, resolved when
-  mappings are registered (not at evaluation time). **[REG-2]** The derived
-  mapping's pairing map is the ancestor chain's pairings merged with the
-  descendant's: ancestor-only pairings first in ancestor order, then every
-  descendant pairing in descendant order — an overridden key evaluates in the
-  **descendant's position**, not the ancestor's. Inheritance merges **only
-  the pairing map**: any other descriptor keyword on ancestor or descendant
-  (e.g. `source`, `each`) is discarded by the merge. **[REG-3]** `$extend`
-  naming an unregistered id MUST raise an error.
+- `$extend` — inheritance between named mappings, resolved when
+  mappings are registered (not at evaluation time). The value is a single id
+  or a list of ids; a one-element list is equivalent to the string form.
+  **[REG-2]** The derived mapping's pairing map is the ancestors' pairings
+  merged in **list order**, then the descendant's: each later layer's
+  pairings merge over the accumulated earlier layers — a later-listed
+  ancestor overrides an earlier one, and the descendant overrides all. Within
+  each merge, non-conflicting pairings keep their existing order and an
+  overridden key evaluates in the **overriding layer's position**, not where
+  it first appeared. Each ancestor arrives already flattened (its own
+  `$extend` was resolved at its registration), so shared ancestry
+  ("diamonds") needs no special treatment: a shared ancestor's pairings
+  simply merge once, settling wherever the last layer that carries them
+  places them. Inheritance merges **only the pairing map**: any other
+  descriptor keyword on ancestor or descendant (e.g. `source`, `each`) is
+  discarded by the merge. Resolution **consumes** `$extend`: the registered,
+  flattened mapping does not retain the keyword, so a flattened mapping
+  stands alone — it can be serialized or re-registered without its ancestors
+  present. **[REG-3]** `$extend` naming an unregistered id —
+  anywhere in the list — MUST raise an error.
 
 Registration order and re-registration: registering a mapping with an
 existing `$id` replaces it. Note that the reference implementation's
@@ -727,13 +738,13 @@ result: { key: a, value: 1 }
 `09-probes-deviations` (A7).*
 
 #### `$extend`
-**Core · registration · value: string.**
-Single inheritance, resolved transitively when mappings are registered:
-ancestor-only pairings first in ancestor order, then all descendant pairings
-in descendant order (overridden keys evaluate in the descendant's position —
-observable through `target`/`output` reads). Only the pairing map is merged;
-other descriptor keywords are discarded (§3.5). Unknown ids MUST raise an
-error at registration.
+**Core · registration · value: `string | string[]`.**
+Inheritance, resolved transitively when mappings are registered. Ancestors
+merge in list order, the descendant last: later layers override earlier
+ones, and an overridden key evaluates in the overriding layer's position —
+observable through `target`/`output` reads. Only the pairing map is merged;
+other descriptor keywords are discarded (§3.5). Unknown ids anywhere in the
+list MUST raise an error at registration.
 
 ```yaml
 # example 6.3-2 (evaluated by registered id)
