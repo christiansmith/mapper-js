@@ -29,13 +29,28 @@ function resolve(...paths) {
 }
 
 /**
+ * define
+ */
+function define(override, binding, fallback) {
+  if (override !== undefined) {
+    return override
+  }
+
+  if (binding !== undefined) {
+    return binding
+  }
+
+  return fallback
+}
+
+/**
  * shift
  */
 export function shift(descriptor, context, changes) {
   const input = context.input
   const output = context.output || {}
-  const source = changes?.source || context.source || input
-  const target = changes?.target || context.target || output
+  const source = define(changes?.source, context.source, input)
+  const target = define(changes?.target, context.target, output)
   const errors = context.errors || []
   const paths = { source: '/', target: '/', ...context.paths }
 

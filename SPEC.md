@@ -346,12 +346,7 @@ in two classes:
 Deriving a child context from a parent ("shifting") resolves, in order:
 explicit overrides (e.g. a new source value for an `each` element), then the
 parent's bindings, then the roots. **[CTX-1]** Overrides apply for **any
-defined value**, including falsy ones. *Deviation A12, see Appendix A: the
-reference
-implementation's resolution is truthiness-gated — a falsy override (`0`,
-`""`, `false`, `null`) silently falls back to the parent binding, so e.g. an
-`each` element whose value is `0` is evaluated against the parent scope
-instead of the element.* **[CTX-2]** Shared fields are propagated **by
+defined value**, including falsy ones. **[CTX-2]** Shared fields are propagated **by
 reference**: writes to `errors` and registry mutations are visible to every
 scope of the invocation.
 
@@ -902,7 +897,8 @@ it and substitutes each `{{param}}` with the mapped result's top-level
 `param` property; placeholders whose mapped value is **falsy** (absent, `0`,
 `""`, `false`, `null`) render as the empty string. Non-object values pass
 through unchanged — but note `null` counts as an object here and triggers the
-template (evaluating against the parent scope via Deviation A12).
+template; its mapping evaluates against the null value, so every placeholder
+renders empty.
 
 ```yaml
 # example 6.6-3
@@ -1387,7 +1383,7 @@ the same change.
 | **A9**  | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                                                                                                | *Fixed in 0.2.0; termination now probed — an over-ask is diagnosed against the distinct count and yields undefined.*                                                                                                                                                                  | `A9` conformance case   |
 | **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5).                                                              | *Fixed in 0.2.0; the former `F12-switch-scope` probes now assert conformance. Idiomatic documents were unaffected — see the note below.*                                                                                                                                              | `A10` conformance cases |
 | **A11** | `$extend` resolves (and unknown-ancestor errors surface) whenever a mapping is registered, including evaluation-time registration (§3.5, §5.3).                                                                   | *Fixed in 0.2.0; the former `F13-late-registration` probes now assert conformance (evaluation-time registration mirrors construction: resolve, and raise on unknown ancestors).*                                                                                                      | `A11` conformance cases |
-| **A12** | Context-derivation overrides apply for any defined value (§5.2).                                                                                                                                                  | Truthiness-gated: falsy overrides (`0`, `""`, `false`, `null`) fall back to the parent binding — e.g. a falsy `each` element evaluates against the parent scope.                                                                                                                      | `F14-falsy-scope`       |
+| **A12** | Context-derivation overrides apply for any defined value (§5.2).                                                                                                                                                  | *Fixed in 0.2.0; the former `F14-falsy-scope` probe now asserts conformance (overrides are defined-gated; falsy `each` elements evaluate in their own position).*                                                                                                                     | `A12` conformance case  |
 
 **Note on A10.** Observed mapping documents pair the
 descriptor's locate keyword with the matching switch scope — e.g.
@@ -1478,7 +1474,7 @@ case yet.
 | PTR-7       | §4.3    | `13-audit-probes` (write-through)                               | —         |
 | PTR-8       | §4.4    | `01-source-reads`, `10-catalog-gaps`                            | —         |
 | PTR-9       | §4.4    | `09-probes-deviations` (A8)                                     | A8        |
-| CTX-1       | §5.2    | `13-audit-probes` (F14)                                         | A12       |
+| CTX-1       | §5.2    | `13-audit-probes` (A12)                                         | A12       |
 | CTX-2       | §5.2    | `11-extension-interfaces`                                       | —         |
 | CTX-3       | §5.3    | *(gap — SHOULD, document-level)*                                | —         |
 | CTX-4       | §5.3    | *(caller requirement — not suite-testable)*                     | —         |

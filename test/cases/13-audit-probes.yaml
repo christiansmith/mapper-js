@@ -51,8 +51,7 @@ tests:
       result: { c: 1, b: 1, valid: true, errors: [] }
       valid: true
 
-  - description: 'F14: a falsy each element is evaluated against the parent scope'
-    deviation: F14-falsy-scope
+  - description: 'A12: a falsy each element is evaluated in its own position'
     level: map
     descriptor:
       mapping:
@@ -66,7 +65,7 @@ tests:
       result:
         out:
           - { v: 1 }
-          - { v: { items: [1, 0, 2] } }
+          - { v: 0 }
           - { v: 2 }
       errors: []
 
