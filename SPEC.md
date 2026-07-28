@@ -307,9 +307,6 @@ source value).
 **[PTR-9]** A pointer string beginning with `/` MUST NOT contain `..`
 segments; such strings are invalid and implementations SHOULD raise a
 diagnostic.
-*Deviation A8, see Appendix A: the reference implementation reads them as
-literal token sequences (`".."` as a key), which yields undefined in
-practice.*
 
 ## 5. Evaluation model
 
@@ -1391,7 +1388,7 @@ the same change.
 | **A5**  | Variant lists select the first **defined** result (§5.4).                                                                                                                                                         | *Fixed in 0.2.0; the former `F10-variant-truthiness` probes now assert conformance (variant lists and the `first` combinator agree).*                                                                                                                                                 | `A5` conformance cases          |
 | **A6**  | A string descriptor that is not a pointer, relative reference, or registered name is a diagnostic (§3.3).                                                                                                         | *Fixed in 0.2.0; the former `F7-deref-ambiguity` probe now asserts conformance (undefined + diagnostic + §5.8 short-circuit; bare fragment strings ruled invalid).*                                                                                                                   | `A6` conformance cases          |
 | **A7**  | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                                                                                                | *Fixed in 0.2.0; the former `F11-unknown-ref` probe now asserts conformance (diagnostic names the id; §5.8 short-circuit).*                                                                                                                                                           | `A7` conformance case           |
-| **A8**  | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                                                                                                    | Slash-prefixed pointers containing `..` are read as literal tokens (yielding undefined).                                                                                                                                                                                              | `F9-relative-pointer-gating`    |
+| **A8**  | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                                                                                                    | *Fixed in 0.2.0; the former `F9-relative-pointer-gating` probe now asserts conformance (diagnosed in bare and all locate-keyword read positions).*                                                                                                                                    | `A8` conformance cases          |
 | **A9**  | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                                                                                                | Loops indefinitely when `random` exceeds the number of distinct members.                                                                                                                                                                                                              | *(not probed — nonterminating)* |
 | **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5).                                                              | All three read the branch key from the switched value.                                                                                                                                                                                                                                | `F12-switch-scope`              |
 | **A11** | `$extend` resolves (and unknown-ancestor errors surface) whenever a mapping is registered, including evaluation-time registration (§3.5, §5.3).                                                                   | Only evaluator construction resolves `$extend`; mappings registered at evaluation time keep it unresolved (ancestor pairings silently missing) and unknown ancestors raise no error.                                                                                                  | `F13-late-registration`         |
@@ -1485,7 +1482,7 @@ case yet.
 | PTR-6       | §4.3    | *(not probed — diagnostic deferred to 0.4.0)*                   | A3        |
 | PTR-7       | §4.3    | `13-audit-probes` (write-through)                               | —         |
 | PTR-8       | §4.4    | `01-source-reads`, `10-catalog-gaps`                            | —         |
-| PTR-9       | §4.4    | `09-probes-deviations` (F9)                                     | A8        |
+| PTR-9       | §4.4    | `09-probes-deviations` (A8)                                     | A8        |
 | CTX-1       | §5.2    | `13-audit-probes` (F14)                                         | A12       |
 | CTX-2       | §5.2    | `11-extension-interfaces`                                       | —         |
 | CTX-3       | §5.3    | *(gap — SHOULD, document-level)*                                | —         |

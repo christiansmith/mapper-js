@@ -290,14 +290,56 @@ tests:
       errors:
         - { descriptor: '#/a', message: unrecognized string descriptor }
 
-  - description: 'F9: a slash-prefixed pointer containing .. reads literal tokens, unresolved'
-    deviation: F9-relative-pointer-gating
+  - description: 'A8: a slash-prefixed pointer containing .. is diagnosed as invalid'
     level: get
     descriptor: /b/../d/e
     input:
       b: { c: 3 }
       d: { e: 5 }
-    expected: { value: __undefined__, errors: [] }
+    expected:
+      value: __undefined__
+      errors:
+        - { descriptor: /b/../d/e, message: pointer must not contain .. segments }
+
+  - description: 'A8: a source keyword pointer containing .. is diagnosed as invalid'
+    level: get
+    descriptor: { source: /b/../d/e }
+    input:
+      b: { c: 3 }
+      d: { e: 5 }
+    expected:
+      value: __undefined__
+      errors:
+        - { source: /b/../d/e, message: pointer must not contain .. segments }
+
+  - description: 'A8: a target keyword pointer containing .. is diagnosed as invalid'
+    level: get
+    descriptor: { target: /b/../d/e }
+    input: { b: 1 }
+    expected:
+      value: __undefined__
+      errors:
+        - { target: /b/../d/e, message: pointer must not contain .. segments }
+
+  - description: 'A8: an input keyword pointer containing .. is diagnosed as invalid'
+    level: get
+    descriptor: { input: /b/../d/e }
+    input:
+      b: { c: 3 }
+      d: { e: 5 }
+    expected:
+      value: __undefined__
+      errors:
+        - { input: /b/../d/e, message: pointer must not contain .. segments }
+
+  - description: 'A8: an output keyword pointer containing .. is diagnosed as invalid'
+    level: get
+    descriptor: { output: /b/../d/e }
+    input: { b: 1 }
+    expected:
+      value: __undefined__
+      errors:
+        - { output: /b/../d/e, message: pointer must not contain .. segments }
 
   - description: 'A5: a variant list selects the first defined result, falsy included'
     level: map

@@ -106,6 +106,60 @@ function deref(descriptor, context) {
 }
 
 /**
+ * unreadable
+ */
+function unreadable(pointer) {
+  if (typeof pointer !== 'string') {
+    return false
+  }
+
+  return pointer.charAt(0) === '/' && pointer.split('/').includes('..')
+}
+
+/**
+ * recognized
+ */
+function recognized(pointer) {
+  return pointer.charAt(0) === '/' || pointer.includes('../')
+}
+
+/**
+ * check
+ */
+export function check(descriptor) {
+  if (typeof descriptor === 'string') {
+    if (unreadable(descriptor)) {
+      return {
+        descriptor,
+        message: 'pointer must not contain .. segments'
+      }
+    }
+
+    if (recognized(descriptor)) {
+      return null
+    }
+
+    return {
+      descriptor,
+      message: 'unrecognized string descriptor'
+    }
+  }
+
+  if (
+    unreadable(descriptor?.source) ||
+    unreadable(descriptor?.target) ||
+    unreadable(descriptor?.input) ||
+    unreadable(descriptor?.output)
+  ) {
+    return {
+      message: 'pointer must not contain .. segments'
+    }
+  }
+
+  return null
+}
+
+/**
  * map
  *
  * next is the next descriptor
@@ -200,6 +254,13 @@ export async function map(next, previous) {
  * get
  */
 export async function get(descriptor, context) {
+  const problem = check(descriptor)
+
+  if (problem) {
+    complain(context.errors, typeof descriptor === 'string' ? {} : descriptor, problem)
+    return undefined
+  }
+
   let value
 
   // direct reads with JSONPointer
@@ -254,7 +315,7 @@ export async function get(descriptor, context) {
   // handle plugin keywords.
   // here we effectively daisy chain the function calls.
   // value is mutated on each iteration if a plugin exists
-  for (let key of Object.keys(descriptor)) {
+  for (const key of Object.keys(descriptor)) {
     const plugin = context.plugins[key]
 
     if (plugin) {
