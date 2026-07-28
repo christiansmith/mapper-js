@@ -3,8 +3,7 @@
 # reference-implementation behavior the specification records as a deviation.
 suite: audit probes
 tests:
-  - description: 'F13: $extend registered at evaluation time is not resolved (ancestor pairings lost)'
-    deviation: F13-late-registration
+  - description: 'A11: $extend registered at evaluation time is resolved (ancestor pairings inherited)'
     level: mapper
     descriptor:
       mappings:
@@ -17,11 +16,10 @@ tests:
           mapping: { /b: /b }
     input: { a: 1, b: 2 }
     expected:
-      result: { b: 2, valid: true, errors: [] }
+      result: { a: 1, b: 2, valid: true, errors: [] }
       valid: true
 
-  - description: 'F13: unknown $extend ancestor at evaluation time raises no error'
-    deviation: F13-late-registration
+  - description: 'A11: unknown $extend ancestor at evaluation time raises an error'
     level: mapper
     descriptor:
       mappings:
@@ -30,9 +28,7 @@ tests:
           $extend: 'mapping:missing'
           mapping: { /b: /b }
     input: { b: 2 }
-    expected:
-      result: { b: 2, valid: true, errors: [] }
-      valid: true
+    throws: Unknown mapping
 
   - description: 'an overridden $extend pairing evaluates in the descendant position'
     tier: core

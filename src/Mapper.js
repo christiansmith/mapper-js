@@ -758,7 +758,7 @@ export function extend(descriptor, context) {
   if ($extend) {
     const parent = deref($extend, context)
 
-    if (!parent) {
+    if (!parent || typeof parent === 'string') {
       throw new Error(`Unknown mapping "${$extend}"`)
     }
 
@@ -861,8 +861,14 @@ export default class Mapper {
     if (typeof descriptor === 'object' && descriptor.mappings) {
       let mappings = Object.values(descriptor.mappings)
 
-      for (let mapping of mappings) {
+      for (const mapping of mappings) {
         this.add(mapping)
+      }
+
+      for (const mapping of mappings) {
+        const $id = mapping.$id
+        const extended = extend(mapping, { mappings: this.mappings })
+        this.mappings[$id] = extended
       }
 
       wrapped = mappings.pop().$id
