@@ -95,3 +95,96 @@ tests:
     expected:
       result: { f: 5 }
       errors: []
+
+  - description: relative pointer pops one segment to read a sibling, not the root
+    tier: extended
+    level: map
+    descriptor:
+      source: /a/b
+      mapping:
+        /y: ../sib
+    input:
+      a: { b: { z: 1 }, sib: 7 }
+    expected:
+      result: { y: 7 }
+      errors: []
+
+  - description: relative pointer resolution accumulates through nested mappings
+    tier: extended
+    level: map
+    descriptor:
+      mapping:
+        /x:
+          source: /a
+          mapping:
+            /y:
+              source: /b
+              mapping:
+                /z: ../../c
+    input:
+      a: { b: {} }
+      c: 4
+    expected:
+      result: { x: { y: { z: 4 } } }
+      errors: []
+
+  - description: relative pointer under each pops partially, staying inside the parent
+    tier: extended
+    level: map
+    descriptor:
+      mapping:
+        /out:
+          source: /d
+          mapping:
+            /rows:
+              source: /items
+              each:
+                /v: /n
+                /top: ../../t
+    input:
+      d:
+        items: [{ n: 1 }]
+        t: 8
+    expected:
+      result:
+        out:
+          rows:
+            - { v: 1, top: 8 }
+      errors: []
+
+  - description: relative pointer at the root pops nothing and reads the root input
+    tier: extended
+    level: map
+    descriptor:
+      mapping:
+        /y: ../c
+    input: { c: 3 }
+    expected:
+      result: { y: 3 }
+      errors: []
+
+  - description: dot and empty segments are dropped during relative resolution
+    tier: extended
+    level: map
+    descriptor:
+      source: /a
+      mapping:
+        /y: .././/c/./d
+    input:
+      a: {}
+      c: { d: 6 }
+    expected:
+      result: { y: 6 }
+      errors: []
+
+  - description: a string merely ending in dot-dot is not a relative reference
+    tier: extended
+    level: map
+    descriptor:
+      mapping:
+        /x: a..
+    input: { a: 1 }
+    expected:
+      result: null
+      errors:
+        - { descriptor: a.., message: unrecognized string descriptor }
