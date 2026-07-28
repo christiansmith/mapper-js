@@ -1354,45 +1354,34 @@ errors: []
 Walkthrough: the first two pairings *write the plugin's parameters into the
 output*; the third reads them back (`output: /params`) as the pipeline value
 — the value-as-parameters pattern of §7.4 — and the `db` plugin performs the
-lookup, narrowed by `pointer`. The final pairing follows the idiom of the
-A10 note (Appendix A): its locate keyword `output: /` pairs with
-`switch.output`, so the branch key comes from the accumulated output under
-both the specified semantics and the reference implementation's actual
-behavior; the selected case then maps the output into the response shape.
+lookup, narrowed by `pointer`. The final pairing pairs its locate keyword
+`output: /` with `switch.output`, so the branch key comes from the
+accumulated output; the selected case then maps the output into the response
+shape.
 Pairing order is the program: reordering these pairings changes (or breaks)
 the flow (§3.2).
 
 ## Appendix A. Known deviations of the reference implementation (normative)
 
-Each row records a place where `@christiansmith/mapper-js` 0.1.1 differs from
-this specification. The *probe* column names the characterization cases in
-`test/cases/09-probes-deviations.yaml` that pin the actual behavior. A
-deviation is retired by fixing the implementation and updating its probes in
-the same change.
+The 0.1.x line of `@christiansmith/mapper-js` deviated from this
+specification in twelve recorded places, identified **A1**–**A12**. All
+twelve were resolved in 0.2.0. The characterization probes that pinned the
+deviant behaviors are now conformance cases, named for their rows (the
+`A1`…`A12` cases in `test/cases/09-probes-deviations.yaml` and
+`test/cases/13-audit-probes.yaml`); the deviation ids remain in use as
+cross-references (Appendix C) and case names.
 
-| ID      | Specification                                                                                                                                                                                                     | Reference implementation                                                                                                                                                                                                                                                              | Probes                  |
-| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| **A1**  | Booleans and `null` are values; the MAP dispatch writes them (§5.4).                                                                                                                                              | *Fixed in 0.2.0; the former `F2-boolean-null-loss` probes now assert conformance.*                                                                                                                                                                                                    | `A1` conformance cases  |
-| **A2**  | An empty array maps to an empty array (§5.4).                                                                                                                                                                     | *Fixed in 0.2.0; the former `F3-empty-array` probe now asserts conformance.*                                                                                                                                                                                                          | `A2` conformance case   |
-| **A3**  | Non-negative-integer tokens (including `0`) infer arrays on recovering writes; non-integer final tokens on arrays are diagnostics (§4.3).                                                                         | *Partially fixed in 0.2.0 — container inference (incl. `-` and beyond-length clamping) conforms; the PTR-6 diagnostic remains open: non-integer final tokens on arrays still coerce to index 0 (deferred to 0.4.0 errors work; not probed).*                                          | `A3` conformance cases  |
-| **A4**  | Validators skip undefined except `required` and check only values of their own type; zero-valued numeric bounds are honored; decimal `multipleOf` operands work; `as` on undefined yields undefined (§5.5, §6.7). | *Partially fixed in 0.2.0 — everything this row lists conforms (the former probes now assert conformance, 14 `A4` cases); the KW-as-1 diagnostic remains open: `as: number` of non-numeric input still yields NaN instead of a diagnostic (deferred to 0.4.0 errors work; see §6.6).* | `A4` conformance cases  |
-| **A5**  | Variant lists select the first **defined** result (§5.4).                                                                                                                                                         | *Fixed in 0.2.0; the former `F10-variant-truthiness` probes now assert conformance (variant lists and the `first` combinator agree).*                                                                                                                                                 | `A5` conformance cases  |
-| **A6**  | A string descriptor that is not a pointer, relative reference, or registered name is a diagnostic (§3.3).                                                                                                         | *Fixed in 0.2.0; the former `F7-deref-ambiguity` probe now asserts conformance (undefined + diagnostic + §5.8 short-circuit; bare fragment strings ruled invalid).*                                                                                                                   | `A6` conformance cases  |
-| **A7**  | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                                                                                                | *Fixed in 0.2.0; the former `F11-unknown-ref` probe now asserts conformance (diagnostic names the id; §5.8 short-circuit).*                                                                                                                                                           | `A7` conformance case   |
-| **A8**  | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                                                                                                    | *Fixed in 0.2.0; the former `F9-relative-pointer-gating` probe now asserts conformance (diagnosed in bare and all locate-keyword read positions).*                                                                                                                                    | `A8` conformance cases  |
-| **A9**  | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                                                                                                | *Fixed in 0.2.0; termination now probed — an over-ask is diagnosed against the distinct count and yields undefined.*                                                                                                                                                                  | `A9` conformance case   |
-| **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5).                                                              | *Fixed in 0.2.0; the former `F12-switch-scope` probes now assert conformance. Idiomatic documents were unaffected — see the note below.*                                                                                                                                              | `A10` conformance cases |
-| **A11** | `$extend` resolves (and unknown-ancestor errors surface) whenever a mapping is registered, including evaluation-time registration (§3.5, §5.3).                                                                   | *Fixed in 0.2.0; the former `F13-late-registration` probes now assert conformance (evaluation-time registration mirrors construction: resolve, and raise on unknown ancestors).*                                                                                                      | `A11` conformance cases |
-| **A12** | Context-derivation overrides apply for any defined value (§5.2).                                                                                                                                                  | *Fixed in 0.2.0; the former `F14-falsy-scope` probe now asserts conformance (overrides are defined-gated; falsy `each` elements evaluate in their own position).*                                                                                                                     | `A12` conformance case  |
+Two narrow remainders are deferred to the 0.4.0 errors work:
 
-**Note on A10.** Observed mapping documents pair the
-descriptor's locate keyword with the matching switch scope — e.g.
-`output: /` with `switch.output`, or a root-input source with `switch.input`.
-Under that idiom the switched value *is* the named scope, so the specified and
-actual behaviors coincide; they diverge only when the switched value differs
-from the named scope (the construction the former `F12` — now `A10` — probes
-use). Adopting the specified semantics therefore did not change the behavior
-of documents following the idiom.
+- **PTR-6** (from A3) — a non-integer final token on an array still coerces
+  to index 0 and splice-inserts instead of raising a diagnostic (§4.3; not
+  probed pending the diagnostic).
+- **KW-as-1** (from A4) — `as: number` of non-numeric input still yields
+  NaN, which serializes as `null`, instead of raising a diagnostic (§6.6).
+
+A future deviation, if one arises, gets a new row here under the next id, a
+probe pinning the actual behavior, and retirement by fixing the
+implementation and updating its probes in the same change.
 
 ## Appendix B. Test suite and case format (informative)
 
