@@ -897,8 +897,9 @@ value:      fixed
 **Experimental · GET shape · value: positive integer / `true`.**
 Selects `random` members of an array value at random (`random: 1` yields the
 member itself, larger counts an array). **[KW-random-1]** `unique` requires
-distinct members and MUST terminate (*Deviation A9*). Nondeterministic by design — conformance
-cases use shape assertions. *Cases: `09-probes-deviations` (F6).*
+distinct members and MUST terminate; requesting more unique members than the
+array's distinct count is a diagnostic. Nondeterministic by design — conformance
+cases use shape assertions. *Cases: `09-probes-deviations` (F6, A9).*
 
 #### `template`
 **Core · GET shape · value: string with `{{param}}` placeholders (requires `mapping`).**
@@ -1389,7 +1390,7 @@ the same change.
 | **A6**  | A string descriptor that is not a pointer, relative reference, or registered name is a diagnostic (§3.3).                                                                                                         | *Fixed in 0.2.0; the former `F7-deref-ambiguity` probe now asserts conformance (undefined + diagnostic + §5.8 short-circuit; bare fragment strings ruled invalid).*                                                                                                                   | `A6` conformance cases          |
 | **A7**  | `$ref` to an unregistered id is a diagnostic naming the id (§3.5).                                                                                                                                                | *Fixed in 0.2.0; the former `F11-unknown-ref` probe now asserts conformance (diagnostic names the id; §5.8 short-circuit).*                                                                                                                                                           | `A7` conformance case           |
 | **A8**  | Slash-prefixed pointers MUST NOT contain `..`; relative resolution applies only to relative references (§4.4).                                                                                                    | *Fixed in 0.2.0; the former `F9-relative-pointer-gating` probe now asserts conformance (diagnosed in bare and all locate-keyword read positions).*                                                                                                                                    | `A8` conformance cases          |
-| **A9**  | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                                                                                                | Loops indefinitely when `random` exceeds the number of distinct members.                                                                                                                                                                                                              | *(not probed — nonterminating)* |
+| **A9**  | `unique` selection MUST terminate; requesting more unique members than exist is a diagnostic (§5.5, Experimental).                                                                                                | *Fixed in 0.2.0; termination now probed — an over-ask is diagnosed against the distinct count and yields undefined.*                                                                                                                                                                  | `A9` conformance case           |
 | **A10** | `switch.source`/`switch.input`/`switch.output` read the branch key from the switched value, the root input, and the root output respectively (§5.5).                                                              | All three read the branch key from the switched value.                                                                                                                                                                                                                                | `F12-switch-scope`              |
 | **A11** | `$extend` resolves (and unknown-ancestor errors surface) whenever a mapping is registered, including evaluation-time registration (§3.5, §5.3).                                                                   | Only evaluator construction resolves `$extend`; mappings registered at evaluation time keep it unresolved (ancestor pairings silently missing) and unknown ancestors raise no error.                                                                                                  | `F13-late-registration`         |
 | **A12** | Context-derivation overrides apply for any defined value (§5.2).                                                                                                                                                  | Truthiness-gated: falsy overrides (`0`, `""`, `false`, `null`) fall back to the parent binding — e.g. a falsy `each` element evaluates against the parent scope.                                                                                                                      | `F14-falsy-scope`               |
@@ -1501,7 +1502,7 @@ case yet.
 | ERR-1       | §5.8    | `04-validation`                                                 | —         |
 | ERR-2       | §5.8    | `05-mapping-core`, `11-extension-interfaces`                    | —         |
 | KW-1        | §6      | *(gap)*                                                         | —         |
-| KW-random-1 | §6.6    | *(not probed — nonterminating)*                                 | A9        |
+| KW-random-1 | §6.6    | `09-probes-deviations` (A9)                                     | A9        |
 | KW-as-1     | §6.6    | `10-catalog-gaps`                                               | A4        |
 | KW-stdout-1 | §6.9    | `09-probes-deviations` (F8)                                     | —         |
 

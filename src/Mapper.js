@@ -333,7 +333,7 @@ export async function get(descriptor, context) {
   value = concatentateValues(descriptor, value)
   value = initializeValue(descriptor, value, context)
   value = initializeConstant(descriptor, value)
-  value = selectRandom(descriptor, value)
+  value = selectRandom(descriptor, value, context)
   value = await renderTemplate(descriptor, value, context)
   value = transformValue(descriptor, value, context)
 
@@ -557,8 +557,9 @@ function transformValue(descriptor, value, context) {
 /**
  * random
  */
-function selectRandom(descriptor, value) {
+function selectRandom(descriptor, value, context) {
   const { random, unique } = descriptor
+  const { errors } = context
 
   const select = (collection, min, max) => {
     const index = Math.floor(Math.random() * (max - min + 1) + min)
@@ -568,6 +569,15 @@ function selectRandom(descriptor, value) {
   if (random && Array.isArray(value)) {
     const min = 0
     const max = value.length - 1
+
+    if (unique && random > new Set(value).size) {
+      complain(errors, descriptor, {
+        value,
+        random,
+        message: `cannot select ${random} unique members`
+      })
+      return undefined
+    }
 
     if (random > 1) {
       const selected = []
