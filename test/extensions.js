@@ -45,7 +45,7 @@ export const plugins = {
   // the pipeline value carries the parameters, options carries the shape
   db: async (options, value) => {
     const tables = {
-      people: { '42': { id: '42', name: 'Ada', role: 'admin' } }
+      people: { 42: { id: '42', name: 'Ada', role: 'admin' } }
     }
     const row = tables[value?.table]?.[value?.id]
     return row ? [row] : []

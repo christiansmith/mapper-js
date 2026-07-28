@@ -8,27 +8,27 @@ suites for other implementations.
 ## Suite shape
 
 ```yaml
-suite: <name>            # display name
-level: mapper            # default invocation level for the suite (optional)
+suite: <name> # display name
+level: mapper # default invocation level for the suite (optional)
 tests:
   - description: <what this case shows>
-    tier: core           # proposed conformance tier: core | extended | experimental
-    level: map           # per-case override: mapper | map | get | extend
-    mappings: {}         # optional named-mapping registry
+    tier: core # proposed conformance tier: core | extended | experimental
+    level: map # per-case override: mapper | map | get | extend
+    mappings: {} # optional named-mapping registry
     descriptor: <descriptor under test>
-    id: <registered id>  # mapper level only: map by $id instead of descriptor
+    id: <registered id> # mapper level only: map by $id instead of descriptor
     input: <input document>
     expected:
-      value: <expected>  # get level: deep equality over the JSON data model
+      value: <expected> # get level: deep equality over the JSON data model
       result: <expected> # map/mapper/extend level: deep equality
-      errors: []         # exact error list, or an integer count
-      valid: true        # mapper level envelope flag
-      stdout: <ops>      # assertion ops over captured console output
-    assert:              # pointer-wise assertions for partial/nondeterministic results
+      errors: [] # exact error list, or an integer count
+      valid: true # mapper level envelope flag
+      stdout: <ops> # assertion ops over captured console output
+    assert: # pointer-wise assertions for partial/nondeterministic results
       /json/pointer: { <op>: <operand>, ... }
-    throws: <substring>  # the invocation must throw an error containing this text
-    deviation: <id>      # marks a characterization of known-deviation behavior
-    only: true           # run only this case (debugging)
+    throws: <substring> # the invocation must throw an error containing this text
+    deviation: <id> # marks a characterization of known-deviation behavior
+    only: true # run only this case (debugging)
 ```
 
 ## Invocation levels
